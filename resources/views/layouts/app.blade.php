@@ -156,8 +156,7 @@
         <header class="border-b border-white/10 bg-white/5 backdrop-blur-xl">
             <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
                 <div>
-                    <p class="text-xs uppercase tracking-[0.3em] text-teal-200/70">Sistem Sekolah</p>
-                    <h1 class="text-lg font-semibold">{{ config('app.name', 'Laravel') }}</h1>
+                    <p class="text-xs uppercase tracking-[0.3em] text-teal-200/70">{{ config('app.name', 'Sistem Sekolah') }}</p>
                 </div>
                 <div class="flex items-center gap-3">
                     @auth
