@@ -72,7 +72,6 @@ class NilaiController extends Controller
             'tanggal' => ['required', 'date'],
             'nilai' => ['required', 'array'],
             'nilai.*.angka' => ['required', 'numeric', 'min:0', 'max:100'],
-            'nilai.*.keterangan' => ['nullable', 'string'],
         ]);
 
         $guru = Guru::where('user_id', $request->user()->id)->first();
@@ -100,7 +99,6 @@ class NilaiController extends Controller
                         'guru_id' => $guru?->id,
                         'tahun_ajaran_id' => $tahunAjaran?->id,
                         'nilai' => $row['angka'],
-                        'keterangan' => $row['keterangan'] ?? null,
                     ]
                 );
             }

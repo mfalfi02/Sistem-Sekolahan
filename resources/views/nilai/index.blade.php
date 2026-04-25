@@ -92,7 +92,6 @@
                                 <th class="px-6 py-4 text-sm font-semibold text-slate-200">Nama Siswa</th>
                                 <th class="px-6 py-4 text-sm font-semibold text-slate-200">NIS</th>
                                 <th class="px-6 py-4 text-sm font-semibold text-slate-200">Nilai</th>
-                                <th class="px-6 py-4 text-sm font-semibold text-slate-200">Keterangan</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/10">
@@ -115,19 +114,10 @@
                                             class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50"
                                         >
                                     </td>
-                                    <td class="px-6 py-4">
-                                        <input
-                                            type="text"
-                                            name="nilai[{{ $student->id }}][keterangan]"
-                                            value="{{ old('nilai.'.$student->id.'.keterangan', $row?->keterangan) }}"
-                                            placeholder="Opsional"
-                                            class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50"
-                                        >
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="4" class="px-6 py-10 text-center text-sm text-slate-400">
+                                    <td colspan="3" class="px-6 py-10 text-center text-sm text-slate-400">
                                         Tidak ada siswa di kelas ini.
                                     </td>
                                 </tr>

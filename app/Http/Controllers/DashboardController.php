@@ -105,7 +105,12 @@ class DashboardController extends Controller
             ['label' => 'Mapel', 'value' => (string) MataPelajaran::count(), 'icon' => '📚'],
         ];
 
-        $data['recentNilai'] = Nilai::where('guru_id', $guru?->id)->latest()->limit(5)->get();
+        $data['recentNilai'] = Nilai::with(['siswa.kelas', 'mataPelajaran'])
+            ->where('guru_id', $guru?->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+        $data['guruName'] = $guru?->nama_guru ?? $user?->name ?? 'Guru';
         $data['jadwalHariIni'] = $jadwalHariIni;
         $data['hariIni'] = $hariIni;
     }
