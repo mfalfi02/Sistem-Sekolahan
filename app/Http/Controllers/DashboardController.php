@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Absensi;
 use App\Models\Guru;
-use App\Models\Kelas;
 use App\Models\Jadwal;
+use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\Nilai;
 use App\Models\NilaiAkhir;
 use App\Models\Siswa;
+use App\Models\TahunAjaran;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -28,7 +29,7 @@ class DashboardController extends Controller
         match ($role) {
             'admin', 'tu' => $this->adminData($data, $today, $selectedKelasId),
             'guru' => $this->guruData($data, $user, $today),
-            'siswa' => $this->siswaData($data, $user, $today),
+            'siswa' => $this->siswaData($data, $user),
             default => $this->defaultData($data),
         };
 
@@ -110,9 +111,9 @@ class DashboardController extends Controller
         $data['hariIni'] = $hariIni;
     }
 
-    private function siswaData(array &$data, $user, string $today): void
+    private function siswaData(array &$data, $user): void
     {
-        $siswa = Siswa::where('user_id', $user->id)->first();
+        $siswa = Siswa::with('kelas')->where('user_id', $user->id)->first();
         $hariIni = $this->indonesianDay(now()->dayOfWeekIso);
         $jadwalHariIni = Jadwal::with(['guru', 'mataPelajaran'])
             ->where('kelas_id', $siswa?->kelas_id)
@@ -128,15 +129,53 @@ class DashboardController extends Controller
             ->whereMonth('tanggal_absen', now()->month)
             ->count();
         $kehadiran = $absensiThisMonth > 0 ? round(($totalHadir / $absensiThisMonth) * 100, 1) : 0;
+        $tahunAjaranMap = TahunAjaran::pluck('nama_tahun_ajaran', 'id');
+        $nilaiAkhir = NilaiAkhir::with(['kelas', 'mataPelajaran'])
+            ->where('siswa_id', $siswa?->id)
+            ->get();
+        $gradePeriods = $nilaiAkhir
+            ->groupBy(fn (NilaiAkhir $nilai) => $nilai->kelas_id.'|'.$nilai->tahun_ajaran_id.'|'.$nilai->semester)
+            ->map(function ($records, string $key) use ($tahunAjaranMap) {
+                $nilai = $records->first();
+
+                return [
+                    'key' => $key,
+                    'kelas_id' => $nilai->kelas_id,
+                    'tahun_ajaran_id' => $nilai->tahun_ajaran_id,
+                    'semester' => $nilai->semester,
+                    'label' => trim(($nilai->kelas?->nama_kelas ?? 'Kelas').' Semester '.$nilai->semester),
+                    'caption' => $tahunAjaranMap->get($nilai->tahun_ajaran_id, '-'),
+                    'average' => round((float) $records->avg('nilai_akhir'), 2),
+                    'total' => $records->count(),
+                ];
+            })
+            ->sortBy('label')
+            ->values();
+        $gradeChartData = $gradePeriods
+            ->map(fn (array $period) => [
+                'label' => $this->shortPeriodName($period['label']),
+                'full_label' => trim($period['label'].' '.$period['caption']),
+                'score' => $period['average'],
+                'total' => $period['total'],
+            ])
+            ->values();
+        $absensiSummary = Absensi::where('siswa_id', $siswa?->id)
+            ->whereMonth('tanggal_absen', now()->month)
+            ->get()
+            ->countBy('status_kehadiran');
 
         $data['cards'] = [
             ['label' => 'Kehadiran Bulan Ini', 'value' => $kehadiran . '%', 'icon' => '✅'],
             ['label' => 'Nilai Tersedia', 'value' => (string) Nilai::where('siswa_id', $siswa?->id)->count(), 'icon' => '⭐'],
-            ['label' => 'Nilai Akhir', 'value' => (string) NilaiAkhir::where('siswa_id', $siswa?->id)->count(), 'icon' => '🏆'],
+            ['label' => 'Nilai Akhir', 'value' => (string) $nilaiAkhir->count(), 'icon' => '🏆'],
             ['label' => 'Peringkat Kelas', 'value' => 'Top 10%', 'icon' => '🥇'],
         ];
 
-        $data['avgGrade'] = NilaiAkhir::where('siswa_id', $siswa?->id)->avg('nilai_akhir') ?: 0;
+        $data['siswa'] = $siswa;
+        $data['avgGrade'] = $nilaiAkhir->avg('nilai_akhir') ?: 0;
+        $data['gradePeriods'] = $gradePeriods;
+        $data['gradeChartData'] = $gradeChartData;
+        $data['absensiSummary'] = $absensiSummary;
         $data['jadwalHariIni'] = $jadwalHariIni;
         $data['hariIni'] = $hariIni;
     }
@@ -162,5 +201,10 @@ class DashboardController extends Controller
             6 => 'Sabtu',
             7 => 'Minggu',
         };
+    }
+
+    private function shortPeriodName(string $name): string
+    {
+        return str_replace(['Semester Ganjil', 'Semester Genap'], ['Ganjil', 'Genap'], $name);
     }
 }

@@ -9,8 +9,8 @@
                 <h2 class="mt-3 text-3xl font-semibold">{{ $mapel->nama_mapel }}</h2>
                 <p class="mt-2 text-slate-300">Rincian nilai per jenis penilaian dan nilai akhir.</p>
             </div>
-            <a href="{{ route('siswa.portal') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15">
-                Kembali ke Portal
+            <a href="{{ route('siswa.nilai.index') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15">
+                Kembali ke Detail Nilai
             </a>
         </div>
     </section>
@@ -34,10 +34,10 @@
                     <tbody class="divide-y divide-white/10">
                         @forelse ($nilaiDetail as $item)
                             <tr class="hover:bg-white/5">
-                                <td class="px-6 py-4 text-sm text-slate-300">{{ $item->tanggal_nilai->format('d M Y') }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-300">{{ $item->tanggal_nilai?->format('d M Y') ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->jenisPenilaian?->nama_jenis ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-300">{{ number_format((float) $item->nilai, 2) }}</td>
-                                <td class="px-6 py-4 text-sm text-slate-300">{{ $item->guru?->user->name ?? '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-300">{{ $item->guru?->user?->name ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->keterangan ?? '-' }}</td>
                             </tr>
                         @empty
@@ -53,19 +53,23 @@
         <div class="space-y-6">
             <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
                 <h3 class="text-xl font-semibold mb-4">Ringkasan Nilai Akhir</h3>
-                @if ($nilaiAkhir)
-                    <div class="grid grid-cols-2 gap-6 text-center">
-                        <div>
-                            <p class="text-3xl font-bold text-teal-300">{{ number_format((float) $nilaiAkhir->nilai_akhir, 2) }}</p>
-                            <p class="text-sm text-slate-400 mt-1">Nilai Akhir</p>
-                        </div>
-                        <div>
-                            <p class="text-3xl font-bold">{{ $nilaiAkhir->predikat }}</p>
-                            <p class="text-sm text-slate-400 mt-1">Predikat</p>
-                        </div>
-                    </div>
-                    <div class="mt-6 p-4 rounded-2xl bg-white/5">
-                        <p class="text-slate-300">{{ $nilaiAkhir->status_lulus ? 'Tuntas' : 'Perlu remedial' }}</p>
+                @if ($nilaiAkhirList->isNotEmpty())
+                    <div class="space-y-3">
+                        @foreach ($nilaiAkhirList as $nilaiAkhir)
+                            <div class="rounded-2xl bg-white/5 p-4">
+                                <div class="flex items-center justify-between gap-4">
+                                    <div>
+                                        <p class="text-sm text-slate-400">{{ $nilaiAkhir->kelas?->nama_kelas ?? '-' }} Semester {{ $nilaiAkhir->semester }}</p>
+                                        <p class="text-sm text-slate-500">{{ $nilaiAkhir->tahunAjaran?->nama_tahun_ajaran ?? '-' }}</p>
+                                    </div>
+                                    <div class="text-right">
+                                        <p class="text-2xl font-bold text-teal-300">{{ number_format((float) $nilaiAkhir->nilai_akhir, 2) }}</p>
+                                        <p class="text-sm text-slate-300">{{ $nilaiAkhir->predikat ?? '-' }}</p>
+                                    </div>
+                                </div>
+                                <p class="mt-3 text-sm text-slate-300">{{ $nilaiAkhir->status_lulus ? 'Tuntas' : 'Perlu remedial' }}</p>
+                            </div>
+                        @endforeach
                     </div>
                 @else
                     <div class="text-center py-12">

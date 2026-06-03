@@ -158,12 +158,27 @@
                 <div>
                     <p class="text-xs uppercase tracking-[0.3em] text-teal-200/70">{{ config('app.name', 'Sistem Sekolah') }}</p>
                 </div>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-wrap items-center justify-end gap-3">
                     @auth
                         @if (auth()->user()->role === 'siswa')
-                            <a class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15" href="{{ route('siswa.portal') }}">
-                                Hasil Saya
-                            </a>
+                            @php
+                                $siswaNav = [
+                                    ['label' => 'Dashboard', 'route' => 'dashboard', 'active' => request()->routeIs('dashboard')],
+                                    ['label' => 'Portal', 'route' => 'siswa.portal', 'active' => request()->routeIs('siswa.portal')],
+                                    ['label' => 'Nilai', 'route' => 'siswa.nilai.index', 'active' => request()->routeIs('siswa.nilai.*')],
+                                    ['label' => 'Absensi', 'route' => 'siswa.absensi.index', 'active' => request()->routeIs('siswa.absensi.*')],
+                                ];
+                            @endphp
+                            <nav class="flex max-w-full items-center gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-slate-950/30 p-1">
+                                @foreach ($siswaNav as $item)
+                                    <a
+                                        class="rounded-xl px-3 py-2 text-sm font-semibold {{ $item['active'] ? 'bg-teal-300 text-slate-950' : 'text-slate-300 hover:bg-white/10 hover:text-teal-200' }}"
+                                        href="{{ route($item['route']) }}"
+                                    >
+                                        {{ $item['label'] }}
+                                    </a>
+                                @endforeach
+                            </nav>
                         @endif
                         @if (auth()->user()->role === 'guru')
                             <a class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15" href="{{ route('absensi.index') }}">

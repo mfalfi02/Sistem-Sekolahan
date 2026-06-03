@@ -78,7 +78,7 @@
                         @forelse ($nilaiAkhir as $item)
                             <tr class="hover:bg-white/5">
                                 <td class="px-6 py-4 text-sm text-slate-300">
-                                    <a href="/siswa/nilai/{{ $item->mata_pelajaran_id }}" class="hover:text-teal-300 font-medium">
+                                    <a href="{{ route('siswa.nilai.detail', $item->mata_pelajaran_id) }}" class="hover:text-teal-300 font-medium">
                                         {{ $item->mataPelajaran?->nama_mapel }}
                                     </a>
                                 </td>

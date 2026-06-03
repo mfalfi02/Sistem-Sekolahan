@@ -32,6 +32,9 @@ Route::middleware('auth')->group(function () {
 
     Route::middleware('role:siswa')->group(function () {
         Route::get('/siswa/portal', [SiswaPortalController::class, 'index'])->name('siswa.portal');
+        Route::get('/siswa/nilai', [SiswaPortalController::class, 'nilai'])->name('siswa.nilai.index');
+        Route::get('/siswa/nilai/{mapelId}', [SiswaPortalController::class, 'detailNilai'])->name('siswa.nilai.detail');
+        Route::get('/siswa/absensi', [SiswaPortalController::class, 'absensi'])->name('siswa.absensi.index');
     });
 
     Route::middleware('role:guru,admin,tu')->group(function () {

@@ -44,4 +44,9 @@ class NilaiAkhir extends Model
     {
         return $this->belongsTo(MataPelajaran::class);
     }
+
+    public function tahunAjaran(): BelongsTo
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
 }
