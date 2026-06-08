@@ -257,15 +257,33 @@ class MasterDataController extends Controller
         $schema = $this->schema($type);
         $model = $this->modelFor($type);
         $query = $model::query();
+        $search = trim((string) $request->input('search', ''));
 
         if (! empty($schema['relations'])) {
             $query->with($schema['relations']);
+        }
+
+        // Add search functionality
+        if ($search) {
+            $query->where(function ($q) use ($search, $schema) {
+                $searchFields = $schema['searchFields'] ?? [];
+
+                foreach ($searchFields as $field) {
+                    $q->orWhere($field, 'like', "%{$search}%");
+                }
+
+                // If no specific search fields defined, search on first text column
+                if (empty($searchFields)) {
+                    $q->orWhere($schema['columns'][0]['field'] ?? 'id', 'like', "%{$search}%");
+                }
+            });
         }
 
         return view('masters.index', [
             'schema' => $schema,
             'type' => $type,
             'records' => $query->latest()->paginate(10)->withQueryString(),
+            'search' => $search,
         ]);
     }
 

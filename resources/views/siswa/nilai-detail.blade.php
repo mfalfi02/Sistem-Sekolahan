@@ -16,9 +16,15 @@
     </section>
 
     <section class="grid gap-6 lg:grid-cols-2">
-        <div class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
+        <div data-table-filter class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
             <div class="border-b border-white/10 px-6 py-4">
-                <h3 class="text-xl font-semibold">Rincian Nilai</h3>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold">Rincian Nilai</h3>
+                        <p class="text-sm text-slate-400">Cari berdasarkan tanggal, jenis, guru, atau keterangan.</p>
+                    </div>
+                    <input type="search" data-table-filter-input placeholder="Cari rincian nilai..." class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-300/50 lg:max-w-sm">
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-white/10 text-left">
@@ -33,7 +39,7 @@
                     </thead>
                     <tbody class="divide-y divide-white/10">
                         @forelse ($nilaiDetail as $item)
-                            <tr class="hover:bg-white/5">
+                            <tr data-table-filter-row class="hover:bg-white/5">
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->tanggal_nilai?->format('d M Y') ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->jenisPenilaian?->nama_jenis ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-300">{{ number_format((float) $item->nilai, 2) }}</td>
@@ -48,6 +54,7 @@
                     </tbody>
                 </table>
             </div>
+            <p data-table-filter-empty hidden class="px-6 py-5 text-center text-sm text-slate-400">Tidak ada data yang cocok dengan pencarian.</p>
         </div>
 
         <div class="space-y-6">

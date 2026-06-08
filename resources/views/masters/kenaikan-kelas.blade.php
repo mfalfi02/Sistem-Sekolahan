@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+
+@section('admin_title', 'Kenaikan Kelas')
 
 @section('content')
 <div class="space-y-8">
@@ -71,7 +73,14 @@
                 </div>
             </div>
 
-            <div class="mt-6 overflow-hidden rounded-3xl border border-white/10">
+            <div data-table-filter class="mt-6 overflow-hidden rounded-3xl border border-white/10">
+                <div class="flex flex-col gap-3 border-b border-white/10 bg-white/5 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 class="text-lg font-semibold text-white">Daftar Siswa</h3>
+                        <p class="text-sm text-slate-400">Cari siswa berdasarkan nama, NIS, atau rekomendasi.</p>
+                    </div>
+                    <input type="search" data-table-filter-input placeholder="Cari siswa..." class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-300/50 lg:max-w-sm">
+                </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-white/10 text-left">
                         <thead class="bg-white/5">
@@ -90,7 +99,7 @@
                                 @php($student = $row['siswa'])
                                 @php($checkedIds = array_map('intval', (array) old('naik_ids', $row['rekomendasi_naik'] ? [$student->id] : [])))
                                 @php($targetValue = old('target_kelas_id.' . $student->id))
-                                <tr class="hover:bg-white/5">
+                                <tr data-table-filter-row class="hover:bg-white/5">
                                     <td class="px-4 py-4">
                                         <input
                                             type="checkbox"
@@ -133,6 +142,7 @@
                         </tbody>
                     </table>
                 </div>
+                <p data-table-filter-empty hidden class="px-4 py-5 text-center text-sm text-slate-400">Tidak ada siswa yang cocok dengan pencarian.</p>
             </div>
         </section>
 

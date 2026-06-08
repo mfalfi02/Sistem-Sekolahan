@@ -9,8 +9,10 @@ use App\Models\Kelas;
 use App\Models\MataPelajaran;
 use App\Models\NilaiAkhir;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\View\View;
 use Maatwebsite\Excel\Facades\Excel;
+use Dompdf\Dompdf;
 
 class RecapController extends Controller
 {
@@ -83,5 +85,73 @@ class RecapController extends Controller
         $mapelId = $request->integer('mata_pelajaran_id');
 
         return Excel::download(new NilaiExport($kelasId, $mapelId), 'rekap-nilai.xlsx');
+    }
+
+    public function exportAbsensiPdf(Request $request)
+    {
+        $kelasId = $request->integer('kelas_id');
+        $tanggalDari = $request->input('tanggal_dari');
+        $tanggalSampai = $request->input('tanggal_sampai');
+
+        $query = Absensi::with(['siswa.kelas', 'siswa.user']);
+
+        if ($kelasId) {
+            $query->where('kelas_id', $kelasId);
+        }
+
+        if ($tanggalDari && $tanggalSampai) {
+            $query->whereBetween('tanggal_absen', [$tanggalDari, $tanggalSampai]);
+        }
+
+        $records = $query->orderBy('tanggal_absen', 'desc')->get();
+        $selectedKelas = $kelasId ? Kelas::find($kelasId) : null;
+
+        $html = view('exports.absensi-pdf', compact('records', 'selectedKelas', 'tanggalDari', 'tanggalSampai'))->render();
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $pdf = $dompdf->output();
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="rekap-absensi.pdf"',
+        ]);
+    }
+
+    public function exportNilaiPdf(Request $request)
+    {
+        $kelasId = $request->integer('kelas_id');
+        $mapelId = $request->integer('mata_pelajaran_id');
+
+        $query = NilaiAkhir::with(['siswa', 'kelas', 'mataPelajaran']);
+
+        if ($kelasId) {
+            $query->where('kelas_id', $kelasId);
+        }
+
+        if ($mapelId) {
+            $query->where('mata_pelajaran_id', $mapelId);
+        }
+
+        $records = $query->orderByDesc('nilai_akhir')->get();
+        $selectedKelas = $kelasId ? Kelas::find($kelasId) : null;
+        $selectedMapel = $mapelId ? MataPelajaran::find($mapelId) : null;
+
+        $html = view('exports.nilai-pdf', compact('records', 'selectedKelas', 'selectedMapel'))->render();
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        $pdf = $dompdf->output();
+
+        return response($pdf, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="rekap-nilai.pdf"',
+        ]);
     }
 }

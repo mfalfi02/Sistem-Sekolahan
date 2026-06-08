@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends(($role === 'admin' || $role === 'tu') ? 'layouts.admin' : 'layouts.app')
 
 @section('content')
 <div class="space-y-8">

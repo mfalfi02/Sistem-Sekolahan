@@ -1,111 +1,192 @@
-<section class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
-    <h2 class="text-3xl font-semibold">Dashboard Admin</h2>
-    <p class="text-slate-300 mt-2">Kelola seluruh sistem sekolah dan lihat statistik lengkap.</p>
-    <a href="{{ route('dashboard') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15 mt-4 inline-block">
-        Lihat Dashboard Umum
-    </a>
-</section>
+@php
+    $cardMeta = [
+        ['subtitle' => 'Semua pengguna terdaftar', 'icon' => 'users', 'tone' => 'from-violet-500/80 to-indigo-500/60 text-violet-100 shadow-violet-500/20'],
+        ['subtitle' => 'Siswa aktif saat ini', 'icon' => 'student', 'tone' => 'from-amber-400/85 to-yellow-600/60 text-amber-50 shadow-amber-500/20'],
+        ['subtitle' => 'Total guru terdaftar', 'icon' => 'teacher', 'tone' => 'from-emerald-400/80 to-green-700/60 text-emerald-50 shadow-emerald-500/20'],
+        ['subtitle' => 'Data nilai tersimpan', 'icon' => 'book', 'tone' => 'from-sky-400/80 to-blue-700/60 text-sky-50 shadow-blue-500/20'],
+    ];
 
-<div class="grid gap-8 lg:grid-cols-2">
-    <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
-        <h3 class="text-2xl font-semibold mb-6">Statistik Sistem</h3>
-        <div class="grid gap-4 md:grid-cols-2">
-            @foreach ($cards as $card)
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-6 text-center">
-                    <div class="text-3xl mb-2">{{ $card['icon'] }}</div>
-                    <p class="text-2xl font-bold">{{ $card['value'] }}</p>
-                    <p class="text-sm text-slate-400 mt-1">{{ $card['label'] }}</p>
+    $dashboardIcon = function (string $name, string $class = 'h-7 w-7') {
+        $paths = [
+            'users' => '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+            'student' => '<path d="m22 10-10-5-10 5 10 5 10-5Z"/><path d="M6 12v5c3 2 9 2 12 0v-5"/><path d="M22 10v6"/>',
+            'teacher' => '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/><path d="m15 11 2 2 4-4"/>',
+            'book' => '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5z"/>',
+            'user' => '<path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/>',
+            'chart' => '<path d="M3 3v18h18"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-3"/>',
+            'grid' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+            'calendar' => '<path d="M8 2v4"/><path d="M16 2v4"/><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/>',
+            'arrow-up' => '<path d="M12 19V5"/><path d="m5 12 7-7 7 7"/><path d="M5 21h14"/>',
+            'file' => '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z"/><path d="M14 2v6h6"/><path d="M8 13h8"/><path d="M8 17h5"/>',
+        ];
+
+        return '<svg class="'.$class.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.($paths[$name] ?? $paths['chart']).'</svg>';
+    };
+
+    $featureButtons = [];
+
+    $recentActivities = collect([
+        ['waktu' => '10:15', 'aktivitas' => 'Login ke sistem', 'oleh' => 'Admin', 'keterangan' => 'Berhasil login'],
+        ['waktu' => '09:45', 'aktivitas' => 'Meninjau rekap absensi', 'oleh' => 'Admin', 'keterangan' => 'Laporan absensi periode berjalan'],
+        ['waktu' => '09:10', 'aktivitas' => 'Meninjau rekap nilai', 'oleh' => 'Admin', 'keterangan' => 'Laporan nilai akhir kelas'],
+        ['waktu' => '08:30', 'aktivitas' => 'Tambah data siswa', 'oleh' => 'Admin', 'keterangan' => 'Siswa baru terdaftar'],
+        ['waktu' => '08:00', 'aktivitas' => 'Update jadwal pelajaran', 'oleh' => 'Admin', 'keterangan' => 'Jadwal kelas XI IPA 1'],
+    ]);
+@endphp
+
+<div class="space-y-7">
+    <section class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/25 backdrop-blur-2xl sm:p-8">
+        <div class="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div class="flex items-center gap-5">
+                <div class="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-slate-700/60 text-slate-300 ring-1 ring-white/10 sm:h-24 sm:w-24">
+                    {!! $dashboardIcon('user', 'h-12 w-12 sm:h-14 sm:w-14') !!}
                 </div>
-            @endforeach
+                <div>
+                    <h2 class="text-2xl font-bold text-white sm:text-3xl">Dashboard Admin</h2>
+                    <p class="mt-3 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+                        Kelola seluruh sistem sekolah dan lihat statistik lengkap.
+                    </p>
+                </div>
+            </div>
+
         </div>
     </section>
 
-    <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
-        <div class="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between mb-6">
-            <div>
-                <h3 class="text-2xl font-semibold">Aktivitas Per Kelas Hari Ini</h3>
-                <p class="text-sm text-slate-400">Persentase hadir, guru yang masuk, dan mata pelajaran.</p>
-            </div>
-            <div class="text-sm text-teal-300">
-                <p>Hari ini</p>
-                <p class="text-right text-xs text-slate-400">{{ $selectedKelasLabel ?? 'Semua Kelas' }}</p>
-            </div>
-        </div>
-        <div class="mb-6 flex flex-wrap gap-2">
-            <a href="{{ route('dashboard') }}" class="rounded-full border border-white/10 px-4 py-2 text-sm {{ empty($selectedKelasId) ? 'bg-teal-300 text-slate-950' : 'bg-white/5 text-slate-200 hover:bg-white/10' }}">
-                Semua Kelas
-            </a>
-            @foreach ($kelasFilterList ?? [] as $kelas)
-                <a
-                    href="{{ route('dashboard', ['kelas_id' => $kelas->id]) }}"
-                    class="rounded-full border border-white/10 px-4 py-2 text-sm {{ (int) ($selectedKelasId ?? 0) === $kelas->id ? 'bg-teal-300 text-slate-950' : 'bg-white/5 text-slate-200 hover:bg-white/10' }}"
-                >
-                    {{ $kelas->nama_kelas }}
-                </a>
-            @endforeach
-        </div>
-        <div class="space-y-4">
-            @forelse ($classActivity ?? [] as $activity)
-                <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                        <div>
-                            <p class="text-sm uppercase tracking-[0.2em] text-slate-400">{{ $activity['kelas']->nama_kelas }}</p>
-                            <h4 class="mt-1 text-xl font-semibold">
-                                {{ $activity['persentase_hadir'] }}% hadir
-                            </h4>
-                            <p class="mt-1 text-sm text-slate-300">
-                                {{ $activity['hadir'] }} dari {{ $activity['total_siswa'] }} siswa hadir
-                            </p>
-                        </div>
-                        <div class="grid gap-3 md:grid-cols-3 lg:min-w-[50%]">
-                            <div class="rounded-xl bg-slate-950/40 p-4">
-                                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Guru</p>
-                                <p class="mt-1 font-medium text-slate-100">{{ $activity['guru'] }}</p>
-                            </div>
-                            <div class="rounded-xl bg-slate-950/40 p-4">
-                                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Mapel</p>
-                                <p class="mt-1 font-medium text-slate-100">{{ $activity['mata_pelajaran'] }}</p>
-                            </div>
-                            <div class="rounded-xl bg-slate-950/40 p-4">
-                                <p class="text-xs uppercase tracking-[0.2em] text-slate-500">Jam</p>
-                                <p class="mt-1 font-medium text-slate-100">{{ $activity['jam'] }}</p>
-                            </div>
-                        </div>
+    <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        @foreach ($cards as $card)
+            @php($meta = $cardMeta[$loop->index] ?? $cardMeta[0])
+            <article class="group rounded-3xl border border-white/10 bg-white/[0.055] p-6 shadow-2xl shadow-black/20 backdrop-blur-xl transition duration-200 hover:-translate-y-1 hover:border-indigo-300/20 hover:bg-white/[0.075]">
+                <div class="flex items-center gap-5">
+                    <div class="grid h-16 w-16 shrink-0 place-items-center rounded-full bg-gradient-to-br {{ $meta['tone'] }} shadow-xl">
+                        {!! $dashboardIcon($meta['icon'], 'h-8 w-8') !!}
                     </div>
-                    <div class="mt-4 h-2 rounded-full bg-white/10">
-                        <div
-                            class="h-2 rounded-full bg-gradient-to-r from-teal-300 to-emerald-400"
-                            style="width: {{ min(100, max(0, $activity['persentase_hadir'])) }}%;"
-                        ></div>
+                    <div>
+                        <p class="text-3xl font-black leading-none text-white">{{ $card['value'] }}</p>
+                        <h3 class="mt-3 text-lg font-semibold text-slate-200">{{ $card['label'] }}</h3>
+                        <p class="mt-3 text-sm text-slate-400">{{ $meta['subtitle'] }}</p>
                     </div>
-                    <p class="mt-2 text-xs text-slate-500">
-                        {{ $activity['jumlah_jadwal'] }} jadwal aktif terdaftar untuk kelas ini hari ini.
-                    </p>
                 </div>
-            @empty
-                <p class="text-center text-slate-400 py-8">Belum ada jadwal aktif hari ini.</p>
-            @endforelse
+            </article>
+        @endforeach
+    </section>
+
+    <section class="grid gap-5 lg:grid-cols-1 xl:grid-cols-2">
+        <div class="rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl sm:p-6">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold text-white">Aktivitas Terbaru</h3>
+                </div>
+            </div>
+
+            <div data-table-filter class="overflow-hidden rounded-2xl border border-white/10 bg-slate-950/[0.15]">
+                <div class="border-b border-white/10 px-4 py-4">
+                    <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                            <p class="text-sm font-semibold text-white">Cari Aktivitas</p>
+                            <p class="text-xs text-slate-400">Filter berdasarkan waktu, aktivitas, atau keterangan.</p>
+                        </div>
+                        <input type="search" data-table-filter-input placeholder="Cari aktivitas..." class="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-white placeholder-slate-500 outline-none focus:border-indigo-300/50 sm:max-w-sm">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="border-b border-white/10 text-xs font-bold uppercase tracking-wider text-slate-400">
+                            <tr>
+                                <th class="px-4 py-4">Waktu</th>
+                                <th class="px-4 py-4">Aktivitas</th>
+                                <th class="px-4 py-4">Oleh</th>
+                                <th class="px-4 py-4">Keterangan</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/10 text-sm text-slate-200">
+                            @foreach ($recentActivities as $activity)
+                                <tr data-table-filter-row class="transition hover:bg-indigo-500/10">
+                                    <td class="whitespace-nowrap px-4 py-4 text-slate-300">{{ $activity['waktu'] }}</td>
+                                    <td class="px-4 py-4 font-medium">{{ $activity['aktivitas'] }}</td>
+                                    <td class="whitespace-nowrap px-4 py-4">{{ $activity['oleh'] }}</td>
+                                    <td class="px-4 py-4 text-slate-300">{{ $activity['keterangan'] }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+                <p data-table-filter-empty hidden class="px-4 py-4 text-center text-sm text-slate-400">Tidak ada aktivitas yang cocok dengan pencarian.</p>
+            </div>
+
+            <a href="{{ route('rekap.absensi') }}" class="mt-6 inline-flex rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:bg-white/10">
+                Lihat Semua Aktivitas
+            </a>
+        </div>
+
+        <div class="rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl sm:p-6">
+            <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                    <h3 class="text-2xl font-bold text-white">Aktivitas Per Kelas Hari Ini</h3>
+                    <p class="mt-2 text-sm leading-6 text-slate-300">Persentase hadir, guru yang masuk, dan mata pelajaran.</p>
+                </div>
+                <a href="{{ route('dashboard') }}" class="inline-flex shrink-0 justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10">
+                    Lihat Semua Kelas
+                </a>
+            </div>
+
+            <div class="mb-6 flex flex-wrap gap-3">
+                <a href="{{ route('dashboard') }}" class="rounded-xl border px-5 py-3 text-sm font-bold transition {{ empty($selectedKelasId) ? 'border-indigo-300/20 bg-indigo-500/25 text-indigo-100 shadow-lg shadow-indigo-500/10' : 'border-white/10 bg-slate-950/20 text-slate-200 hover:bg-white/10' }}">
+                    Semua Kelas
+                </a>
+                @foreach ($kelasFilterList ?? [] as $kelas)
+                    <a
+                        href="{{ route('dashboard', ['kelas_id' => $kelas->id]) }}"
+                        class="rounded-xl border px-5 py-3 text-sm font-bold transition {{ (int) ($selectedKelasId ?? 0) === $kelas->id ? 'border-indigo-300/20 bg-indigo-500/25 text-indigo-100 shadow-lg shadow-indigo-500/10' : 'border-white/10 bg-slate-950/20 text-slate-200 hover:bg-white/10' }}"
+                    >
+                        {{ $kelas->nama_kelas }}
+                    </a>
+                @endforeach
+            </div>
+
+            <div class="space-y-4">
+                @forelse ($classActivity ?? [] as $activity)
+                    <article class="rounded-lg md:rounded-2xl border border-white/10 bg-slate-950/[0.18] p-3 md:p-4">
+                        <div class="grid gap-3 md:gap-4 grid-cols-1 md:grid-cols-[0.6fr_1.4fr] md:items-start">
+                            <div class="min-w-0">
+                                <p class="truncate text-base md:text-lg font-bold text-white">{{ $activity['kelas']->nama_kelas }}</p>
+                                <p class="mt-2 text-base md:text-lg font-bold text-white">{{ $activity['persentase_hadir'] }}%</p>
+                                <p class="mt-1 text-xs md:text-sm text-slate-300">
+                                    {{ $activity['hadir'] }}/{{ $activity['total_siswa'] }} hadir
+                                </p>
+                            </div>
+
+                            <div class="grid gap-2 grid-cols-3">
+                                <div class="rounded-lg border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Guru</p>
+                                    <p class="mt-1 font-bold text-white truncate text-xs md:text-sm">{{ $activity['guru'] }}</p>
+                                </div>
+                                <div class="rounded-lg border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Mapel</p>
+                                    <p class="mt-1 font-bold text-white truncate text-xs md:text-sm">{{ $activity['mata_pelajaran'] }}</p>
+                                </div>
+                                <div class="rounded-lg border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                    <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Jam</p>
+                                    <p class="mt-1 font-bold text-white truncate text-xs md:text-sm">{{ $activity['jam'] }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-700/50 shadow-inner shadow-black/30">
+                            <div
+                                class="h-full rounded-full bg-gradient-to-r from-indigo-400 via-sky-400 to-emerald-300 shadow-lg shadow-sky-500/30"
+                                style="width: {{ min(100, max(0, $activity['persentase_hadir'])) }}%;"
+                            ></div>
+                        </div>
+                        <p class="mt-2 text-xs text-slate-400">
+                            {{ $activity['jumlah_jadwal'] }} jadwal hari ini
+                        </p>
+                    </article>
+                @empty
+                    <div class="rounded-lg md:rounded-2xl border border-white/10 bg-slate-950/20 p-6 md:p-8 text-center text-xs md:text-sm text-slate-400">
+                        Belum ada jadwal aktif hari ini.
+                    </div>
+                @endforelse
+            </div>
         </div>
     </section>
 </div>
-
-<section class="grid gap-6 lg:grid-cols-3">
-    <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h3 class="text-xl font-semibold">Quick Actions</h3>
-        <div class="mt-4 space-y-2">
-            <a href="/masters/siswa" class="block p-3 rounded-xl bg-white/5 hover:bg-white/10">Kelola Siswa</a>
-            <a href="/masters/jadwal" class="block p-3 rounded-xl bg-white/5 hover:bg-white/10">Kelola Jadwal</a>
-            <a href="{{ route('kenaikan-kelas.index') }}" class="block p-3 rounded-xl bg-white/5 hover:bg-white/10">Kenaikan Kelas</a>
-            <a href="/rekap/nilai" class="block p-3 rounded-xl bg-white/5 hover:bg-white/10">Rekap Nilai</a>
-            <a href="/rekap/absensi" class="block p-3 rounded-xl bg-white/5 hover:bg-white/10">Rekap Absensi</a>
-        </div>
-    </div>
-    <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h3 class="text-xl font-semibold">Reports</h3>
-        <p class="text-slate-300 mt-3">Generate laporan lengkap untuk semua data.</p>
-    </div>
-    <div class="rounded-3xl border border-white/10 bg-white/5 p-6">
-        <h3 class="text-xl font-semibold">System Status</h3>
-        <p class="text-emerald-400 mt-3">Semua layanan aktif</p>
-    </div>
-</section>

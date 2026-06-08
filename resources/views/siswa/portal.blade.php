@@ -31,9 +31,15 @@
     </section>
 
     <section class="grid gap-6 lg:grid-cols-2">
-        <div class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
+        <div data-table-filter class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
             <div class="border-b border-white/10 px-6 py-4">
-                <h3 class="text-xl font-semibold">Absensi Terakhir</h3>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold">Absensi Terakhir</h3>
+                        <p class="text-sm text-slate-400">Cari absensi berdasarkan status atau keterangan.</p>
+                    </div>
+                    <input type="search" data-table-filter-input placeholder="Cari absensi..." class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-300/50 lg:max-w-sm">
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-white/10 text-left">
@@ -46,7 +52,7 @@
                     </thead>
                     <tbody class="divide-y divide-white/10">
                         @forelse ($absensi as $item)
-                            <tr class="hover:bg-white/5">
+                            <tr data-table-filter-row class="hover:bg-white/5">
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->tanggal_absen->format('d M Y') }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ ucfirst($item->status_kehadiran) }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->keterangan ?? '-' }}</td>
@@ -59,11 +65,18 @@
                     </tbody>
                 </table>
             </div>
+            <p data-table-filter-empty hidden class="px-6 py-5 text-center text-sm text-slate-400">Tidak ada data yang cocok dengan pencarian.</p>
         </div>
 
-        <div class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
+        <div data-table-filter class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
             <div class="border-b border-white/10 px-6 py-4">
-                <h3 class="text-xl font-semibold">Nilai Akhir</h3>
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold">Nilai Akhir</h3>
+                        <p class="text-sm text-slate-400">Cari nilai berdasarkan mapel atau predikat.</p>
+                    </div>
+                    <input type="search" data-table-filter-input placeholder="Cari nilai..." class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-300/50 lg:max-w-sm">
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-white/10 text-left">
@@ -76,7 +89,7 @@
                     </thead>
                     <tbody class="divide-y divide-white/10">
                         @forelse ($nilaiAkhir as $item)
-                            <tr class="hover:bg-white/5">
+                            <tr data-table-filter-row class="hover:bg-white/5">
                                 <td class="px-6 py-4 text-sm text-slate-300">
                                     <a href="{{ route('siswa.nilai.detail', $item->mata_pelajaran_id) }}" class="hover:text-teal-300 font-medium">
                                         {{ $item->mataPelajaran?->nama_mapel }}
@@ -93,6 +106,7 @@
                     </tbody>
                 </table>
             </div>
+            <p data-table-filter-empty hidden class="px-6 py-5 text-center text-sm text-slate-400">Tidak ada data yang cocok dengan pencarian.</p>
         </div>
     </section>
 

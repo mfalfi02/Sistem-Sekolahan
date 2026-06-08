@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+
+@section('admin_title', 'Data Master')
 
 @section('content')
 <div class="space-y-8">
@@ -7,7 +9,7 @@
             <div>
                 <p class="text-xs uppercase tracking-[0.3em] text-teal-200/70">User Management</p>
                 <h2 class="mt-3 text-3xl font-semibold">{{ $mode === 'create' ? 'Tambah' : 'Ubah' }} User</h2>
-                <p class="mt-2 text-slate-300">Buat akun login untuk admin, guru, dan siswa.</p>
+                <p class="mt-2 text-slate-300">Buat akun login khusus untuk admin dan guru.</p>
             </div>
             <a href="{{ route('users.index') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15">Kembali</a>
         </div>
@@ -20,7 +22,6 @@
         @endif
 
         @php($selectedRole = old('role', $user->role ?? 'admin'))
-        @php($selectedKelasId = old('kelas_id', $user->siswa?->kelas_id ?? ''))
 
         <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
             <div class="grid gap-5 md:grid-cols-2">
@@ -43,7 +44,7 @@
                 <div>
                     <label class="mb-2 block text-sm font-medium text-slate-300">Role</label>
                     <select id="user-role" name="role" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50">
-                        @foreach (['admin' => 'Admin', 'guru' => 'Guru', 'siswa' => 'Siswa'] as $value => $label)
+                        @foreach (['admin' => 'Admin', 'guru' => 'Guru'] as $value => $label)
                             <option value="{{ $value }}" @selected($selectedRole === $value)>{{ $label }}</option>
                         @endforeach
                     </select>
@@ -63,17 +64,6 @@
                     </label>
                     @error('status_aktif')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
                 </div>
-                <div id="kelas-wrapper" class="md:col-span-2">
-                    <label class="mb-2 block text-sm font-medium text-slate-300">Kelas Siswa</label>
-                    <select name="kelas_id" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50">
-                        <option value="">- Pilih kelas -</option>
-                        @foreach ($kelasList ?? [] as $kelas)
-                            <option value="{{ $kelas->id }}" @selected((string) $selectedKelasId === (string) $kelas->id)>{{ $kelas->nama_kelas }}</option>
-                        @endforeach
-                    </select>
-                    <p class="mt-2 text-xs text-slate-400">Wajib diisi jika role siswa, supaya siswa otomatis masuk kelas yang benar.</p>
-                    @error('kelas_id')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
-                </div>
             </div>
         </section>
 
@@ -85,22 +75,4 @@
         </div>
     </form>
 </div>
-
-<script>
-    (function () {
-        const roleSelect = document.getElementById('user-role');
-        const kelasWrapper = document.getElementById('kelas-wrapper');
-
-        if (!roleSelect || !kelasWrapper) {
-            return;
-        }
-
-        const syncKelasVisibility = () => {
-            kelasWrapper.style.display = roleSelect.value === 'siswa' ? '' : 'none';
-        };
-
-        roleSelect.addEventListener('change', syncKelasVisibility);
-        syncKelasVisibility();
-    })();
-</script>
 @endsection

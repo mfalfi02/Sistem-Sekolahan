@@ -16,7 +16,7 @@
     </section>
 
     @forelse ($periods as $period)
-        <section class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
+        <section data-table-filter class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
             <div class="border-b border-white/10 px-6 py-5">
                 <div class="grid gap-5 xl:grid-cols-[1fr_auto] xl:items-center">
                     <div>
@@ -53,6 +53,15 @@
                     <span class="rounded-full bg-amber-300/10 px-3 py-1 text-xs font-semibold text-amber-200">{{ $period['remedial'] }} perlu remedial</span>
                 </div>
             </div>
+            <div class="border-b border-white/10 px-6 py-4">
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                        <h4 class="text-lg font-semibold text-white">Tabel Nilai</h4>
+                        <p class="text-sm text-slate-400">Cari berdasarkan mapel, predikat, atau status.</p>
+                    </div>
+                    <input type="search" data-table-filter-input placeholder="Cari nilai..." class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none focus:border-teal-300/50 lg:max-w-sm">
+                </div>
+            </div>
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-white/10 text-left">
                     <thead class="bg-white/5">
@@ -66,7 +75,7 @@
                     </thead>
                     <tbody class="divide-y divide-white/10">
                         @foreach ($period['records'] as $item)
-                            <tr class="hover:bg-white/5">
+                            <tr data-table-filter-row class="hover:bg-white/5">
                                 <td class="px-6 py-4 text-sm font-medium text-slate-200">{{ $item->mataPelajaran?->nama_mapel ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-teal-200">{{ number_format((float) $item->nilai_akhir, 2) }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->predikat ?? '-' }}</td>
@@ -81,6 +90,7 @@
                     </tbody>
                 </table>
             </div>
+            <p data-table-filter-empty hidden class="px-6 py-5 text-center text-sm text-slate-400">Tidak ada data yang cocok dengan pencarian.</p>
         </section>
     @empty
         <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-10 text-center shadow-2xl">

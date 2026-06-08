@@ -40,8 +40,10 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:guru,admin,tu')->group(function () {
         Route::get('/rekap/absensi', [RecapController::class, 'absensi'])->name('rekap.absensi');
         Route::get('/rekap/absensi/export', [RecapController::class, 'exportAbsensi'])->name('rekap.absensi.export');
+        Route::get('/rekap/absensi/export-pdf', [RecapController::class, 'exportAbsensiPdf'])->name('rekap.absensi.export-pdf');
         Route::get('/rekap/nilai', [RecapController::class, 'nilai'])->name('rekap.nilai');
         Route::get('/rekap/nilai/export', [RecapController::class, 'exportNilai'])->name('rekap.nilai.export');
+        Route::get('/rekap/nilai/export-pdf', [RecapController::class, 'exportNilaiPdf'])->name('rekap.nilai.export-pdf');
     });
 
     Route::middleware('role:admin,tu')->group(function () {

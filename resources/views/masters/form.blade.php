@@ -1,4 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.admin')
+
+@section('admin_title', ($schema['title'] ?? 'Data Master'))
 
 @section('content')
 <div class="space-y-8">

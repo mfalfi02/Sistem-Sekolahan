@@ -14,10 +14,22 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
+        $search = trim((string) $request->input('search', ''));
+
+        $query = User::whereIn('role', ['admin', 'guru'])->with('siswa.kelas');
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
         return view('users.index', [
-            'users' => User::with('siswa.kelas')->latest()->paginate(10),
+            'users' => $query->latest()->paginate(10),
+            'search' => $search,
         ]);
     }
 
@@ -111,14 +123,9 @@ class UserManagementController extends Controller
                 $user ? Rule::unique('users', 'email')->ignore($user->id) : Rule::unique('users', 'email'),
             ],
             'password' => [$user ? 'nullable' : 'required', 'string', Password::min(8)],
-            'role' => ['required', 'in:admin,guru,siswa'],
+            'role' => ['required', 'in:admin,guru'],
             'phone' => ['nullable', 'string', 'max:20'],
             'status_aktif' => ['nullable', 'boolean'],
-            'kelas_id' => [
-                Rule::requiredIf(fn () => $request->input('role') === 'siswa'),
-                'nullable',
-                'exists:kelas,id',
-            ],
         ]);
 
         if (blank($data['password'] ?? null)) {
