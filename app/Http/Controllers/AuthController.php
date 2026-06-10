@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -28,12 +29,31 @@ class AuthController extends Controller
         }
 
         $request->session()->regenerate();
+        $user = Auth::user();
+
+        ActivityLogger::record(
+            $user,
+            'auth_login',
+            'Login ke sistem',
+            'Berhasil masuk ke dashboard.',
+            route('dashboard')
+        );
 
         return redirect()->intended(route('dashboard'));
     }
 
     public function destroy(Request $request): RedirectResponse
     {
+        $user = $request->user();
+
+        ActivityLogger::record(
+            $user,
+            'auth_logout',
+            'Logout dari sistem',
+            'Pengguna keluar dari aplikasi.',
+            route('login')
+        );
+
         Auth::logout();
 
         $request->session()->invalidate();

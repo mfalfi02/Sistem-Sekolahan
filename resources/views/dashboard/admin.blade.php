@@ -24,14 +24,7 @@
     };
 
     $featureButtons = [];
-
-    $recentActivities = collect([
-        ['waktu' => '10:15', 'aktivitas' => 'Login ke sistem', 'oleh' => 'Admin', 'keterangan' => 'Berhasil login'],
-        ['waktu' => '09:45', 'aktivitas' => 'Meninjau rekap absensi', 'oleh' => 'Admin', 'keterangan' => 'Laporan absensi periode berjalan'],
-        ['waktu' => '09:10', 'aktivitas' => 'Meninjau rekap nilai', 'oleh' => 'Admin', 'keterangan' => 'Laporan nilai akhir kelas'],
-        ['waktu' => '08:30', 'aktivitas' => 'Tambah data siswa', 'oleh' => 'Admin', 'keterangan' => 'Siswa baru terdaftar'],
-        ['waktu' => '08:00', 'aktivitas' => 'Update jadwal pelajaran', 'oleh' => 'Admin', 'keterangan' => 'Jadwal kelas XI IPA 1'],
-    ]);
+    $recentActivities = collect($recentActivities ?? []);
 @endphp
 
 <div class="space-y-7">
@@ -71,7 +64,7 @@
     </section>
 
     <section class="grid gap-5 lg:grid-cols-1 xl:grid-cols-2">
-        <div class="rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl sm:p-6">
+        <div id="aktivitas-kelas" class="rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/25 backdrop-blur-2xl sm:p-6">
             <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h3 class="text-2xl font-bold text-white">Aktivitas Terbaru</h3>
@@ -99,21 +92,25 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-white/10 text-sm text-slate-200">
-                            @foreach ($recentActivities as $activity)
+                            @forelse ($recentActivities as $activity)
                                 <tr data-table-filter-row class="transition hover:bg-indigo-500/10">
-                                    <td class="whitespace-nowrap px-4 py-4 text-slate-300">{{ $activity['waktu'] }}</td>
-                                    <td class="px-4 py-4 font-medium">{{ $activity['aktivitas'] }}</td>
-                                    <td class="whitespace-nowrap px-4 py-4">{{ $activity['oleh'] }}</td>
-                                    <td class="px-4 py-4 text-slate-300">{{ $activity['keterangan'] }}</td>
+                                    <td class="whitespace-nowrap px-4 py-4 text-slate-300">{{ $activity['waktu'] ?? '-' }}</td>
+                                    <td class="px-4 py-4 font-medium">{{ $activity['aktivitas'] ?? '-' }}</td>
+                                    <td class="whitespace-nowrap px-4 py-4">{{ $activity['oleh'] ?? '-' }}</td>
+                                    <td class="px-4 py-4 text-slate-300">{{ $activity['keterangan'] ?? '-' }}</td>
                                 </tr>
-                            @endforeach
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="px-4 py-8 text-center text-sm text-slate-400">Belum ada aktivitas yang tercatat.</td>
+                                </tr>
+                            @endforelse
                         </tbody>
                     </table>
                 </div>
                 <p data-table-filter-empty hidden class="px-4 py-4 text-center text-sm text-slate-400">Tidak ada aktivitas yang cocok dengan pencarian.</p>
             </div>
 
-            <a href="{{ route('rekap.absensi') }}" class="mt-6 inline-flex rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:bg-white/10">
+            <a href="{{ route('activities.index') }}" class="mt-6 inline-flex rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:-translate-y-0.5 hover:bg-white/10">
                 Lihat Semua Aktivitas
             </a>
         </div>
@@ -124,9 +121,6 @@
                     <h3 class="text-2xl font-bold text-white">Aktivitas Per Kelas Hari Ini</h3>
                     <p class="mt-2 text-sm leading-6 text-slate-300">Persentase hadir, guru yang masuk, dan mata pelajaran.</p>
                 </div>
-                <a href="{{ route('dashboard') }}" class="inline-flex shrink-0 justify-center rounded-xl border border-white/10 bg-white/5 px-5 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10">
-                    Lihat Semua Kelas
-                </a>
             </div>
 
             <div class="mb-6 flex flex-wrap gap-3">

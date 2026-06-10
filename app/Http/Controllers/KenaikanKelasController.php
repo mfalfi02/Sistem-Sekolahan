@@ -6,6 +6,7 @@ use App\Models\Kelas;
 use App\Models\NilaiAkhir;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -82,6 +83,7 @@ class KenaikanKelasController extends Controller
             'target_kelas_id.*' => ['nullable', 'exists:kelas,id'],
         ]);
 
+        $kelasAsal = Kelas::findOrFail($data['kelas_id']);
         $selectedIds = collect($data['naik_ids'] ?? [])->map(fn ($value) => (int) $value)->all();
 
         DB::transaction(function () use ($data, $selectedIds): void {
@@ -95,6 +97,14 @@ class KenaikanKelasController extends Controller
                     ]);
             }
         });
+
+        ActivityLogger::record(
+            $request->user(),
+            'kenaikan_kelas',
+            'Proses kenaikan kelas',
+            count($selectedIds).' siswa dipindahkan dari kelas '.$kelasAsal->nama_kelas.'.',
+            route('kenaikan-kelas.index', ['kelas_id' => $data['kelas_id']])
+        );
 
         return redirect()
             ->route('kenaikan-kelas.index', ['kelas_id' => $data['kelas_id']])

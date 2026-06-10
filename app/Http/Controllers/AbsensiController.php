@@ -9,6 +9,7 @@ use App\Models\Jadwal;
 use App\Models\Notifikasi;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
+use App\Support\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -151,6 +152,14 @@ class AbsensiController extends Controller
                 );
             }
         });
+
+        ActivityLogger::record(
+            $request->user(),
+            'absensi',
+            'Input absensi kelas '.$kelas->nama_kelas,
+            'Tanggal '.Carbon::parse($data['tanggal'])->format('d M Y').' untuk '.count($siswaIds).' siswa.',
+            route('absensi.index', ['kelas_id' => $kelas->id, 'tanggal' => $data['tanggal']])
+        );
 
         return redirect()
             ->route('absensi.index', ['kelas_id' => $kelas->id, 'tanggal' => $data['tanggal']])

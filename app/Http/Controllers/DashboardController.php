@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Absensi;
+use App\Models\ActivityLog;
 use App\Models\Guru;
 use App\Models\Jadwal;
 use App\Models\Kelas;
@@ -12,7 +13,9 @@ use App\Models\NilaiAkhir;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -34,6 +37,47 @@ class DashboardController extends Controller
         };
 
         return view('dashboard.index', array_merge(['user' => $user, 'role' => $role], $data));
+    }
+
+    public function activities(Request $request): View
+    {
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $perPage = 15;
+
+        if (Schema::hasTable('activity_logs')) {
+            $query = ActivityLog::with('user')->latest();
+
+            if ($dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            }
+
+            if ($dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
+            }
+
+            $activities = $query->paginate($perPage)->withQueryString();
+            $totalActivities = (clone $query)->count();
+        } else {
+            $activities = new LengthAwarePaginator(
+                [],
+                0,
+                $perPage,
+                1,
+                [
+                    'path' => $request->url(),
+                    'query' => $request->query(),
+                ]
+            );
+            $totalActivities = 0;
+        }
+
+        return view('dashboard.activities', [
+            'activities' => $activities,
+            'dateFrom' => $dateFrom,
+            'dateTo' => $dateTo,
+            'totalActivities' => $totalActivities,
+        ]);
     }
 
     private function adminData(array &$data, string $today, ?int $selectedKelasId = null): void
@@ -58,6 +102,23 @@ class DashboardController extends Controller
             ['label' => 'Guru', 'value' => (string) Guru::count(), 'icon' => '👩‍🏫'],
             ['label' => 'Nilai Akhir', 'value' => (string) NilaiAkhir::count(), 'icon' => '📊'],
         ];
+
+        $data['recentActivities'] = Schema::hasTable('activity_logs')
+            ? ActivityLog::with('user')
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->map(function (ActivityLog $log): array {
+                    return [
+                        'waktu' => $log->created_at?->format('H:i') ?? '-',
+                        'aktivitas' => $log->title,
+                        'oleh' => $log->user?->name ?? strtoupper($log->activity_type),
+                        'keterangan' => $log->detail ?? '-',
+                        'link' => $log->link,
+                    ];
+                })
+                ->all()
+            : [];
 
         $data['classActivity'] = $kelasList->map(function (Kelas $kelas) use ($today, $jadwalHariIni) {
             $totalSiswa = Siswa::where('kelas_id', $kelas->id)->count();

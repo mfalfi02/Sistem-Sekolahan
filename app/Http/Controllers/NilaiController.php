@@ -10,6 +10,7 @@ use App\Models\Nilai;
 use App\Models\NilaiAkhir;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -78,6 +79,7 @@ class NilaiController extends Controller
         $guru = Guru::where('user_id', $request->user()->id)->first();
         $tahunAjaran = TahunAjaran::where('status_aktif', true)->first() ?? TahunAjaran::orderByDesc('id')->first();
         $kelas = Kelas::findOrFail($data['kelas_id']);
+        $mataPelajaran = MataPelajaran::find($data['mata_pelajaran_id']);
         $students = Siswa::where('kelas_id', $kelas->id)->pluck('id')->all();
         $jenisPenilaian = JenisPenilaian::findOrFail($data['jenis_penilaian_id']);
 
@@ -105,6 +107,19 @@ class NilaiController extends Controller
                 );
             }
         });
+
+        ActivityLogger::record(
+            $request->user(),
+            'nilai',
+            'Input nilai kelas '.$kelas->nama_kelas,
+            ($mataPelajaran?->nama_mapel ?? 'Mapel').', '.$jenisPenilaian->nama_jenis.' pada '.$data['tanggal'].'.',
+            route('nilai.index', [
+                'kelas_id' => $kelas->id,
+                'mata_pelajaran_id' => $data['mata_pelajaran_id'],
+                'jenis_penilaian_id' => $data['jenis_penilaian_id'],
+                'tanggal' => $data['tanggal'],
+            ])
+        );
 
         $this->recalculateNilaiAkhir(
             $kelas->id,

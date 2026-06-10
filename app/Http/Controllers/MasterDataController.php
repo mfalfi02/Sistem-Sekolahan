@@ -9,6 +9,7 @@ use App\Models\MataPelajaran;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -308,6 +309,14 @@ class MasterDataController extends Controller
 
         $this->persist($type, $validated);
 
+        ActivityLogger::record(
+            $request->user(),
+            'master_create',
+            'Tambah '.$schema['title'],
+            'Data '.$schema['title'].' berhasil ditambahkan.',
+            route('masters.index', $type)
+        );
+
         return redirect()
             ->route('masters.index', $type)
             ->with('success', $schema['title'].' berhasil ditambahkan.');
@@ -336,6 +345,14 @@ class MasterDataController extends Controller
 
         $this->persist($type, $validated, $record);
 
+        ActivityLogger::record(
+            $request->user(),
+            'master_update',
+            'Perbarui '.$schema['title'],
+            'Data '.$schema['title'].' berhasil diperbarui.',
+            route('masters.index', $type)
+        );
+
         return redirect()
             ->route('masters.index', $type)
             ->with('success', $schema['title'].' berhasil diperbarui.');
@@ -353,6 +370,14 @@ class MasterDataController extends Controller
 
             $record->delete();
         });
+
+        ActivityLogger::record(
+            $request->user(),
+            'master_delete',
+            'Hapus '.$schema['title'],
+            'Data '.$schema['title'].' berhasil dihapus.',
+            route('masters.index', $type)
+        );
 
         return redirect()
             ->route('masters.index', $type)

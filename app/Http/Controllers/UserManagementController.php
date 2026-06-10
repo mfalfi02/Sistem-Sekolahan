@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Kelas;
 use App\Models\Siswa;
 use App\Models\User;
+use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -59,6 +60,14 @@ class UserManagementController extends Controller
             $this->syncSiswaProfile($user, $data);
         });
 
+        ActivityLogger::record(
+            $request->user(),
+            'user_create',
+            'Tambah user '.$data['name'],
+            'Role '.strtoupper($data['role']).' berhasil dibuat.',
+            route('users.index')
+        );
+
         return redirect()->route('users.index')->with('success', 'User berhasil ditambahkan.');
     }
 
@@ -95,6 +104,14 @@ class UserManagementController extends Controller
             $this->syncSiswaProfile($user->fresh(), $data);
         });
 
+        ActivityLogger::record(
+            $request->user(),
+            'user_update',
+            'Perbarui user '.$data['name'],
+            'Role '.strtoupper($data['role']).' berhasil diperbarui.',
+            route('users.index')
+        );
+
         return redirect()->route('users.index')->with('success', 'User berhasil diperbarui.');
     }
 
@@ -105,6 +122,14 @@ class UserManagementController extends Controller
         }
 
         $user->delete();
+
+        ActivityLogger::record(
+            $request->user(),
+            'user_delete',
+            'Hapus user '.$user->name,
+            'Akun '.strtoupper($user->role).' dihapus dari sistem.',
+            route('users.index')
+        );
 
         return redirect()->route('users.index')->with('success', 'User berhasil dihapus.');
     }

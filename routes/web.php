@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:admin,tu')->group(function () {
+        Route::get('/aktivitas', [DashboardController::class, 'activities'])->name('activities.index');
         Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
         Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');
         Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
