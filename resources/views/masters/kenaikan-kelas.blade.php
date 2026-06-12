@@ -57,7 +57,7 @@
             <div class="grid gap-4 lg:grid-cols-2">
                 <div>
                     <label class="mb-2 block text-sm font-medium text-slate-300">Kelas Tujuan Default</label>
-                    <select name="kelas_tujuan_default_id" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50">
+                    <select name="kelas_tujuan_default_id" class="w-full appearance-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50">
                         <option value="">- Pilih kelas tujuan -</option>
                         @foreach ($targetClassList as $kelas)
                             <option value="{{ $kelas->id }}" @selected(old('kelas_tujuan_default_id') == $kelas->id)>{{ $kelas->nama_kelas }}</option>
@@ -124,7 +124,7 @@
                                         @endif
                                     </td>
                                     <td class="px-4 py-4">
-                                        <select name="target_kelas_id[{{ $student->id }}]" class="w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-teal-300/50">
+                                        <select name="target_kelas_id[{{ $student->id }}]" class="w-full appearance-none rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-teal-300/50">
                                             <option value="">- Ikuti kelas default -</option>
                                             @foreach ($targetClassList as $kelas)
                                                 <option value="{{ $kelas->id }}" @selected((string) $targetValue === (string) $kelas->id)>{{ $kelas->nama_kelas }}</option>

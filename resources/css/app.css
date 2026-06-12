@@ -9,3 +9,23 @@
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 }
+
+/* Fix dropdown select styling for dark theme */
+select {
+    color-scheme: dark;
+}
+
+/* Ensure select options have proper contrast */
+select option {
+    background-color: #0f172a;
+    color: #ffffff;
+}
+
+select option:hover {
+    background-color: #1e293b;
+}
+
+select option:checked {
+    background-color: #0d9488;
+    color: #ffffff;
+}
