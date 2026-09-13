@@ -1,4 +1,4 @@
-@extends(in_array(auth()->user()?->role, ['admin', 'tu'], true) ? 'layouts.admin' : 'layouts.app')
+@extends(in_array(auth()->user()?->role, ['admin', 'tu', 'kepala_sekolah'], true) ? 'layouts.admin' : 'layouts.app')
 
 @section('admin_title', 'Penilaian')
 
@@ -13,7 +13,7 @@
                     Pilih kelas, mata pelajaran, dan jenis penilaian untuk mengisi nilai seluruh siswa dengan tampilan yang lebih terstruktur dan mudah dibaca.
                 </p>
             </div>
-            <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Mode</p>
                     <p class="mt-2 text-lg font-semibold text-white">Input Cepat</p>
@@ -22,9 +22,6 @@
                     <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Fokus</p>
                     <p class="mt-2 text-lg font-semibold text-white">Nilai Harian</p>
                 </div>
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-medium text-white transition hover:bg-white/10">
-                    Kembali ke Dashboard
-                </a>
             </div>
         </div>
     </section>
@@ -48,9 +45,11 @@
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-300">Mata Pelajaran</label>
                 <select name="mata_pelajaran_id" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-teal-300/50">
-                    @foreach ($mapelList as $mapel)
+                    @forelse ($mapelList as $mapel)
                         <option value="{{ $mapel->id }}" @selected($selectedMapelId === $mapel->id)>{{ $mapel->nama_mapel }}</option>
-                    @endforeach
+                    @empty
+                        <option value="">Belum ada mata pelajaran yang dijadwalkan</option>
+                    @endforelse
                 </select>
             </div>
             <div>
@@ -73,7 +72,19 @@
         </form>
     </section>
 
-    @if ($selectedKelas)
+    <section class="rounded-3xl border border-teal-300/20 bg-teal-300/10 p-5 shadow-2xl">
+        <div>
+            <p class="text-xs uppercase tracking-[0.2em] text-teal-200/70">Rumus Nilai</p>
+            <p class="mt-2 text-lg font-semibold text-white">
+                Nilai akhir akademik dihitung dari bobot tiap jenis penilaian.
+            </p>
+            <p class="mt-1 text-sm text-slate-300">
+                Contoh: UTS 98 dengan bobot 30% memberi kontribusi 29.40, UAS 90 dengan bobot 40% memberi kontribusi 36.00, lalu semua kontribusi dibagi total bobot yang tersedia untuk mendapatkan nilai akademik akhir.
+            </p>
+        </div>
+    </section>
+
+    @if ($selectedKelas && $selectedMapelId)
         <form method="POST" action="{{ route('nilai.store') }}" class="space-y-6">
             @csrf
             <input type="hidden" name="kelas_id" value="{{ $selectedKelas->id }}">
@@ -92,11 +103,11 @@
                     <p class="mt-2 text-xl font-semibold text-white">{{ $tahunAjaran?->nama_tahun_ajaran }} {{ $tahunAjaran?->semester }}</p>
                     <p class="mt-1 text-sm text-slate-400">Sinkron dengan semester aktif</p>
                 </div>
-                <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5 shadow-2xl">
-                    <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tanggal input</p>
-                    <p class="mt-2 text-xl font-semibold text-white">{{ \Carbon\Carbon::parse($tanggal)->format('d M Y') }}</p>
-                    <p class="mt-1 text-sm text-slate-400">Pencatatan nilai hari ini</p>
-                </div>
+            <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-5 shadow-2xl">
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tanggal input</p>
+                <p class="mt-2 text-xl font-semibold text-white">{{ \App\Support\IndonesianDateTime::date($tanggal) }}</p>
+                <p class="mt-1 text-sm text-slate-400">Pencatatan nilai hari ini</p>
+            </div>
             </section>
 
             <section data-table-filter class="overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 shadow-2xl">
@@ -168,6 +179,10 @@
                 </button>
             </div>
         </form>
+    @elseif ($selectedKelas)
+        <div class="rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Anda belum memiliki jadwal mata pelajaran. Hubungi admin untuk menambahkan jadwal mengajar terlebih dahulu.
+        </div>
     @endif
 </div>
 @endsection

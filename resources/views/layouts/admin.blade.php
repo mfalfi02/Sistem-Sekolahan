@@ -28,13 +28,24 @@
         return '<svg class="'.$class.'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'.($paths[$name] ?? $paths['home']).'</svg>';
     };
 
-    $adminMenus = [
+    $user = auth()->user();
+    $role = $user?->role;
+    $isKepalaSekolah = $role === 'kepala_sekolah';
+
+    $adminMenus = $isKepalaSekolah ? [
+        ['label' => 'Dashboard', 'icon' => 'home', 'href' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
+        ['label' => 'Laporan Absensi', 'icon' => 'file', 'href' => route('rekap.absensi'), 'active' => request()->routeIs('rekap.absensi*')],
+        ['label' => 'Laporan Nilai', 'icon' => 'star', 'href' => route('rekap.nilai'), 'active' => request()->routeIs('rekap.nilai*')],
+        ['label' => 'Data Guru', 'icon' => 'grid', 'href' => route('masters.index', 'guru'), 'active' => request()->routeIs('masters.*') && request()->route('type') === 'guru'],
+        ['label' => 'Data Siswa', 'icon' => 'grid', 'href' => route('masters.index', 'siswa'), 'active' => request()->routeIs('masters.*') && request()->route('type') === 'siswa'],
+    ] : [
         ['label' => 'Dashboard Admin', 'icon' => 'home', 'href' => route('dashboard'), 'active' => request()->routeIs('dashboard')],
         ['label' => 'Data Siswa', 'icon' => 'grid', 'href' => route('masters.index', 'siswa'), 'active' => request()->routeIs('masters.*') && request()->route('type') !== 'jadwal'],
         ['label' => 'Laporan', 'icon' => 'file', 'href' => route('rekap.absensi'), 'active' => request()->routeIs('rekap.*')],
         ['label' => 'Jadwal', 'icon' => 'calendar', 'href' => route('masters.index', 'jadwal'), 'active' => request()->routeIs('masters.*') && request()->route('type') === 'jadwal'],
         ['label' => 'Kenaikan Kelas', 'icon' => 'arrow-up', 'href' => route('kenaikan-kelas.index'), 'active' => request()->routeIs('kenaikan-kelas.*')],
-        ['label' => 'Data Master', 'icon' => 'settings', 'href' => route('users.index'), 'active' => request()->routeIs('users.*')],
+        ['label' => 'Data Master', 'icon' => 'settings', 'href' => route('masters.index', 'tahun-ajaran'), 'active' => request()->routeIs('masters.*') && request()->route('type') === 'tahun-ajaran'],
+        ['label' => 'Kelola User', 'icon' => 'user', 'href' => route('users.index'), 'active' => request()->routeIs('users.*')],
     ];
 @endphp
 <body class="min-h-screen bg-[#071426] font-sans text-slate-100 antialiased">
@@ -52,7 +63,9 @@
                 </span>
                 <span>
                     <span class="block text-lg font-bold leading-tight text-white">Sistem Sekolah</span>
-                    <span class="mt-1 block text-base font-semibold text-slate-200">SMTK</span>
+                    <span class="mt-1 block text-base font-semibold text-slate-200">
+                        {{ $isKepalaSekolah ? 'Kepala Sekolah' : 'Sekolah Menengah Teologi Kristen Eben Heizer' }}
+                    </span>
                 </span>
             </a>
             <button id="admin-sidebar-close" type="button" class="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/5 text-slate-300 lg:hidden">
@@ -67,7 +80,7 @@
                         {!! $adminIcon($item['icon']) !!}
                     </span>
                     <span class="flex-1">{{ $item['label'] }}</span>
-                    @if (in_array($item['label'], ['Data Siswa', 'Laporan'], true))
+                    @if (in_array($item['label'], ['Data Guru', 'Data Siswa', 'Laporan', 'Laporan Absensi', 'Laporan Nilai'], true))
                         <span class="text-slate-400 transition group-hover:translate-x-0.5 group-hover:text-white">
                             <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
                         </span>
@@ -82,8 +95,8 @@
                     {!! $adminIcon('user', 'h-6 w-6') !!}
                 </span>
                 <span class="min-w-0 flex-1">
-                    <span class="block truncate font-bold text-white">Admin</span>
-                    <span class="mt-1 block truncate text-sm text-slate-400">admin@mail.com</span>
+                    <span class="block truncate font-bold text-white">{{ $user?->name ?? 'Pengguna' }}</span>
+                    <span class="mt-1 block truncate text-sm text-slate-400">{{ strtoupper($role ?? 'guest') }}</span>
                 </span>
                 <svg class="h-4 w-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
             </div>
@@ -105,7 +118,7 @@
                         <span class="grid h-12 w-12 place-items-center rounded-full bg-slate-700/70 text-slate-200 ring-1 ring-white/10">
                             <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
                         </span>
-                        <span class="font-bold text-white">Admin</span>
+                        <span class="font-bold text-white">{{ $user?->name ?? 'Pengguna' }}</span>
                         <svg class="h-4 w-4 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
                     </div>
 
@@ -186,6 +199,126 @@
 
                 input.addEventListener('input', applyFilter);
                 applyFilter();
+            });
+        })();
+
+        // Logout confirmation modal
+        (() => {
+            const logoutRoute = '{{ route('logout') }}';
+            const modal = document.createElement('div');
+            modal.id = 'logout-modal';
+            modal.className = 'fixed inset-0 z-50 hidden items-center justify-center';
+            modal.innerHTML = `
+                <div class="absolute inset-0 bg-black/60"></div>
+                <div class="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#071426]/95 p-6 shadow-2xl">
+                    <h3 class="text-lg font-semibold">Konfirmasi Logout</h3>
+                    <p class="mt-2 text-sm text-slate-300">Apakah Anda yakin ingin keluar dari sistem?</p>
+                    <div class="mt-4 flex justify-end gap-3">
+                        <button id="logout-cancel" type="button" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-2">Batal</button>
+                        <button id="logout-confirm" type="button" class="rounded-2xl bg-rose-500 px-4 py-2 text-white">Logout</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+
+            const openModal = () => { modal.classList.remove('hidden'); modal.classList.add('flex'); };
+            const closeModal = () => { modal.classList.remove('flex'); modal.classList.add('hidden'); };
+
+            let pendingForm = null;
+
+            document.addEventListener('submit', (e) => {
+                const form = e.target;
+                if (form && form.tagName === 'FORM' && form.getAttribute('action') === logoutRoute) {
+                    e.preventDefault();
+                    pendingForm = form;
+                    openModal();
+                }
+            }, true);
+
+            document.getElementById('logout-cancel')?.addEventListener('click', () => {
+                pendingForm = null;
+                closeModal();
+            });
+
+            document.getElementById('logout-confirm')?.addEventListener('click', () => {
+                if (pendingForm) {
+                    closeModal();
+                    pendingForm.submit();
+                }
+            });
+        })();
+        
+        // Delete confirmation modal
+        (() => {
+            const modalHtml = `
+                <div id="confirm-delete-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+                    <div id="confirm-delete-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+                    <div id="confirm-delete-box" class="relative z-10 w-full max-w-md transform-gpu rounded-2xl border border-white/10 bg-[#071426]/95 p-6 shadow-2xl opacity-0 scale-95 transition duration-200">
+                        <div class="flex flex-col items-center text-center">
+                            <div class="rounded-full bg-rose-500/10 p-3">
+                                <svg class="h-8 w-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                            </div>
+                            <h3 class="mt-4 text-lg font-semibold">Konfirmasi Hapus</h3>
+                            <p id="confirm-delete-message" class="mt-2 text-sm text-slate-300">Data yang dihapus tidak dapat dikembalikan. Apakah Anda yakin ingin melanjutkan?</p>
+                            <div class="mt-6 flex w-full justify-end gap-3">
+                                <button id="confirm-delete-cancel" type="button" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-2">Batal</button>
+                                <button id="confirm-delete-confirm" type="button" class="rounded-2xl bg-rose-500 px-4 py-2 text-white">Hapus Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = modalHtml;
+            document.body.appendChild(wrapper);
+
+            const modal = document.getElementById('confirm-delete-modal');
+            const overlay = document.getElementById('confirm-delete-overlay');
+            const box = document.getElementById('confirm-delete-box');
+            const messageEl = document.getElementById('confirm-delete-message');
+            const btnCancel = document.getElementById('confirm-delete-cancel');
+            const btnConfirm = document.getElementById('confirm-delete-confirm');
+            let pendingForm = null;
+            let isSubmitting = false;
+
+            const open = (msg) => {
+                if (msg) messageEl.textContent = msg;
+                modal.classList.remove('hidden');
+                requestAnimationFrame(() => { box.classList.remove('opacity-0','scale-95'); });
+                box.classList.add('opacity-100','scale-100');
+            };
+
+            const close = () => {
+                box.classList.add('opacity-0','scale-95');
+                box.classList.remove('opacity-100','scale-100');
+                setTimeout(() => modal.classList.add('hidden'), 200);
+                pendingForm = null;
+                isSubmitting = false;
+            };
+
+            document.addEventListener('submit', function (e) {
+                const form = e.target;
+                if (form && form.tagName === 'FORM' && form.dataset.confirm) {
+                    if (isSubmitting) {
+                        return;
+                    }
+                    e.preventDefault();
+                    pendingForm = form;
+                    open(form.dataset.confirm);
+                }
+            }, true);
+
+            btnCancel?.addEventListener('click', function () { close(); });
+            overlay?.addEventListener('click', function () { close(); });
+            document.addEventListener('keydown', function (e) { if (e.key === 'Escape') close(); });
+            btnConfirm?.addEventListener('click', function () {
+                if (pendingForm) {
+                    isSubmitting = true;
+                    modal.classList.add('hidden');
+                    pendingForm.submit();
+                }
             });
         })();
     </script>

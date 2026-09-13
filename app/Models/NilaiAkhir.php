@@ -16,6 +16,14 @@ class NilaiAkhir extends Model
         'tahun_ajaran_id',
         'semester',
         'nilai_akhir',
+        'absensi_total',
+        'absensi_hadir',
+        'absensi_terlambat',
+        'absensi_sakit',
+        'absensi_izin',
+        'absensi_alfa',
+        'persentase_absensi',
+        'nilai_absensi',
         'predikat',
         'ranking',
         'status_lulus',
@@ -26,6 +34,14 @@ class NilaiAkhir extends Model
     {
         return [
             'nilai_akhir' => 'decimal:2',
+            'absensi_total' => 'integer',
+            'absensi_hadir' => 'integer',
+            'absensi_terlambat' => 'integer',
+            'absensi_sakit' => 'integer',
+            'absensi_izin' => 'integer',
+            'absensi_alfa' => 'integer',
+            'persentase_absensi' => 'decimal:2',
+            'nilai_absensi' => 'decimal:2',
             'status_lulus' => 'boolean',
         ];
     }

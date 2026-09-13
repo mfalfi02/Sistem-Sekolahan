@@ -27,8 +27,8 @@
     $polygonPoints = $chartPoints->isNotEmpty()
         ? $polylinePoints.' '.$chartPoints->last()['x'].',145 '.$chartPoints->first()['x'].',145'
         : '';
-    $calendarStart = now()->copy()->startOfMonth()->startOfWeek();
-    $calendarEnd = now()->copy()->endOfMonth()->endOfWeek();
+    $calendarStart = now('Asia/Jakarta')->copy()->startOfMonth()->startOfWeek();
+    $calendarEnd = now('Asia/Jakarta')->copy()->endOfMonth()->endOfWeek();
     $calendarWeeks = collect();
 
     for ($date = $calendarStart->copy(); $date->lte($calendarEnd); $date->addDay()) {
@@ -38,7 +38,7 @@
 
         $calendarWeeks[$calendarWeeks->count() - 1]->push([
             'date' => $date->copy(),
-            'is_current_month' => $date->month === now()->month,
+            'is_current_month' => $date->month === now('Asia/Jakarta')->month,
             'is_today' => $date->isToday(),
         ]);
     }
@@ -72,7 +72,7 @@
     <section class="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-2xl backdrop-blur-xl md:p-5">
         <div class="grid gap-4 xl:grid-cols-[1fr_auto] xl:items-center">
             <div class="min-w-0">
-                <p class="text-xs uppercase tracking-[0.24em] text-teal-200/70">Dashboard Siswa</p>
+                <p class="text-xs uppercase tracking-[0.24em] text-teal-200/70">Portal Siswa</p>
                 <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
                     <div class="min-w-0">
                         <h2 class="truncate text-2xl font-semibold leading-tight text-slate-100 md:text-3xl">
@@ -173,9 +173,9 @@
                         <span class="flex h-8 w-8 items-center justify-center rounded-xl bg-teal-300/15 text-xs font-bold text-teal-200">{{ $loop->iteration }}</span>
                         <div class="min-w-0">
                             <p class="truncate text-sm font-semibold text-slate-100">{{ $jadwal->mataPelajaran?->nama_mapel ?? '-' }}</p>
-                            <p class="text-xs text-slate-400">{{ substr((string) $jadwal->jam_mulai, 0, 5) }} - {{ substr((string) $jadwal->jam_selesai, 0, 5) }}</p>
+                            <p class="text-xs text-slate-400">{{ \App\Support\IndonesianDateTime::timeRange($jadwal->jam_mulai, $jadwal->jam_selesai) }}</p>
                         </div>
-                        <span class="rounded-lg bg-white/10 px-2 py-1 text-xs font-semibold text-slate-300">R. {{ $jadwal->ruang ?? '-' }}</span>
+                        <span class="rounded-lg bg-white/10 px-2 py-1 text-xs font-semibold text-slate-300">{{ $jadwal->kelas?->nama_kelas ?? '-' }}</span>
                     </div>
                 @empty
                     <p class="rounded-xl border border-white/10 bg-slate-950/30 p-4 text-center text-sm text-slate-400">Belum ada jadwal aktif hari ini.</p>
@@ -187,7 +187,7 @@
             <article id="kalender-akademik" class="rounded-2xl border border-white/10 bg-white/5 p-3 shadow-2xl">
                 <div class="flex items-center justify-between gap-2">
                     <h3 class="text-base font-semibold text-slate-100">Kalender</h3>
-                    <p class="text-[11px] text-slate-400">{{ now()->translatedFormat('M Y') }}</p>
+                    <p class="text-[11px] text-slate-400">{{ \App\Support\IndonesianDateTime::monthYear(now('Asia/Jakarta')) }}</p>
                 </div>
                 <div class="mt-2 grid grid-cols-7 gap-px text-center text-[9px] text-slate-500">
                     @foreach (['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'] as $day)

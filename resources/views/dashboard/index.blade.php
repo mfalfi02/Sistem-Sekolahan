@@ -1,9 +1,13 @@
-@extends(($role === 'admin' || $role === 'tu') ? 'layouts.admin' : 'layouts.app')
+@extends(in_array($role, ['admin', 'tu', 'kepala_sekolah'], true) ? 'layouts.admin' : 'layouts.app')
+
+@section('admin_title', $role === 'kepala_sekolah' ? 'Dashboard Kepala Sekolah' : (in_array($role, ['admin', 'tu'], true) ? 'Dashboard Admin' : 'Dashboard'))
 
 @section('content')
 <div class="space-y-8">
-    @if ($role === 'admin' || $role === 'tu')
+    @if (in_array($role, ['admin', 'tu'], true))
         @include('dashboard.admin')
+    @elseif ($role === 'kepala_sekolah')
+        @include('dashboard.kepala-sekolah')
     @elseif ($role === 'guru')
         @include('dashboard.guru')
     @elseif ($role === 'siswa')

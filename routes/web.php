@@ -31,19 +31,23 @@ Route::middleware('auth')->group(function () {
     });
 
     Route::middleware('role:siswa')->group(function () {
-        Route::get('/siswa/portal', [SiswaPortalController::class, 'index'])->name('siswa.portal');
         Route::get('/siswa/nilai', [SiswaPortalController::class, 'nilai'])->name('siswa.nilai.index');
         Route::get('/siswa/nilai/{mapelId}', [SiswaPortalController::class, 'detailNilai'])->name('siswa.nilai.detail');
-        Route::get('/siswa/absensi', [SiswaPortalController::class, 'absensi'])->name('siswa.absensi.index');
     });
 
-    Route::middleware('role:guru,admin,tu')->group(function () {
+    Route::middleware('role:guru,admin,tu,kepala_sekolah')->group(function () {
         Route::get('/rekap/absensi', [RecapController::class, 'absensi'])->name('rekap.absensi');
         Route::get('/rekap/absensi/export', [RecapController::class, 'exportAbsensi'])->name('rekap.absensi.export');
         Route::get('/rekap/absensi/export-pdf', [RecapController::class, 'exportAbsensiPdf'])->name('rekap.absensi.export-pdf');
         Route::get('/rekap/nilai', [RecapController::class, 'nilai'])->name('rekap.nilai');
         Route::get('/rekap/nilai/export', [RecapController::class, 'exportNilai'])->name('rekap.nilai.export');
         Route::get('/rekap/nilai/export-pdf', [RecapController::class, 'exportNilaiPdf'])->name('rekap.nilai.export-pdf');
+    });
+
+    Route::middleware('role:admin,tu,kepala_sekolah')->group(function () {
+        Route::prefix('masters')->name('masters.')->group(function () {
+            Route::get('{type}', [MasterDataController::class, 'index'])->name('index');
+        });
     });
 
     Route::middleware('role:admin,tu')->group(function () {
@@ -56,11 +60,12 @@ Route::middleware('auth')->group(function () {
         Route::delete('/users/{user}', [UserManagementController::class, 'destroy'])->name('users.destroy');
 
         Route::prefix('masters')->name('masters.')->group(function () {
-            Route::get('{type}', [MasterDataController::class, 'index'])->name('index');
+            Route::get('{type}/export-pdf', [MasterDataController::class, 'exportPdf'])->name('export-pdf');
             Route::get('{type}/create', [MasterDataController::class, 'create'])->name('create');
             Route::post('{type}', [MasterDataController::class, 'store'])->name('store');
             Route::get('{type}/{id}/edit', [MasterDataController::class, 'edit'])->name('edit');
             Route::put('{type}/{id}', [MasterDataController::class, 'update'])->name('update');
+            Route::post('{type}/{id}/activate', [MasterDataController::class, 'activate'])->name('activate');
             Route::delete('{type}/{id}', [MasterDataController::class, 'destroy'])->name('destroy');
         });
 

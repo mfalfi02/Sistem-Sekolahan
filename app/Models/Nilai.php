@@ -43,4 +43,19 @@ class Nilai extends Model
     {
         return $this->belongsTo(MataPelajaran::class);
     }
+
+    public function jenisPenilaian(): BelongsTo
+    {
+        return $this->belongsTo(JenisPenilaian::class);
+    }
+
+    public function guru(): BelongsTo
+    {
+        return $this->belongsTo(Guru::class);
+    }
+
+    public function tahunAjaran(): BelongsTo
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
 }

@@ -13,7 +13,7 @@
                     Lihat seluruh aktivitas yang tercatat di sistem, lengkap dengan tanggal, waktu, pelaku, dan keterangan. Gunakan filter kalender untuk mempersempit hasil.
                 </p>
             </div>
-            <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+            <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                     <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Total Aktivitas</p>
                     <p class="mt-2 text-2xl font-semibold text-white">{{ number_format((int) $totalActivities) }}</p>
@@ -22,9 +22,6 @@
                     <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Filter</p>
                     <p class="mt-2 text-lg font-semibold text-white">Kalender Tanggal</p>
                 </div>
-                <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-medium text-white transition hover:bg-white/10">
-                    Kembali ke Dashboard
-                </a>
             </div>
         </div>
     </section>
@@ -69,17 +66,16 @@
                         <th class="px-6 py-4 text-sm font-semibold text-slate-200">Aktivitas</th>
                         <th class="px-6 py-4 text-sm font-semibold text-slate-200">Oleh</th>
                         <th class="px-6 py-4 text-sm font-semibold text-slate-200">Keterangan</th>
-                        <th class="px-6 py-4 text-sm font-semibold text-slate-200">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-white/10">
                     @forelse ($activities as $activity)
                         <tr class="hover:bg-white/5">
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-300">
-                                {{ $activity->created_at?->format('d M Y') ?? '-' }}
+                                {{ \App\Support\IndonesianDateTime::date($activity->created_at) }}
                             </td>
                             <td class="whitespace-nowrap px-6 py-4 text-sm text-slate-300">
-                                {{ $activity->created_at?->format('H:i') ?? '-' }}
+                                {{ \App\Support\IndonesianDateTime::time($activity->created_at) }}
                             </td>
                             <td class="px-6 py-4">
                                 <p class="font-medium text-white">{{ $activity->title }}</p>
@@ -91,19 +87,10 @@
                             <td class="px-6 py-4 text-sm text-slate-300">
                                 {{ $activity->detail ?? '-' }}
                             </td>
-                            <td class="whitespace-nowrap px-6 py-4">
-                                @if ($activity->link)
-                                    <a href="{{ $activity->link }}" class="inline-flex rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10">
-                                        Buka
-                                    </a>
-                                @else
-                                    <span class="text-sm text-slate-500">-</span>
-                                @endif
-                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400">
+                            <td colspan="5" class="px-6 py-10 text-center text-sm text-slate-400">
                                 Belum ada aktivitas yang tercatat pada filter ini.
                             </td>
                         </tr>

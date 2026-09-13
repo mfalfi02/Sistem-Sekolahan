@@ -45,7 +45,7 @@
                     </span>
                     <div>
                         <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Hari ini</p>
-                        <p class="mt-1 text-lg font-semibold text-white">{{ $hariIni ?? now()->translatedFormat('l') }}</p>
+                        <p class="mt-1 text-lg font-semibold text-white">{{ $hariIni ?? \App\Support\IndonesianDateTime::dayName(now('Asia/Jakarta')) }}</p>
                     </div>
                 </div>
             </div>
@@ -114,19 +114,19 @@
                         {!! $themeIcon('clock', 'h-4 w-4 text-teal-200') !!}
                         <div>
                             <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Jam</p>
-                            <p class="text-sm font-semibold text-white">{{ substr((string) $jadwal->jam_mulai, 0, 5) }}</p>
+                            <p class="text-sm font-semibold text-white">{{ \App\Support\IndonesianDateTime::time($jadwal->jam_mulai) }}</p>
                         </div>
                     </div>
 
                     <div class="min-w-0">
                         <p class="text-xs uppercase tracking-[0.2em] text-slate-400">{{ $jadwal->kelas?->nama_kelas ?? '-' }}</p>
                         <p class="mt-1 truncate text-base font-semibold text-slate-100">{{ $jadwal->mataPelajaran?->nama_mapel ?? '-' }}</p>
-                        <p class="mt-1 text-sm text-slate-400">{{ substr((string) $jadwal->jam_mulai, 0, 5) }} - {{ substr((string) $jadwal->jam_selesai, 0, 5) }}</p>
+                        <p class="mt-1 text-sm text-slate-400">{{ \App\Support\IndonesianDateTime::timeRange($jadwal->jam_mulai, $jadwal->jam_selesai) }}</p>
                     </div>
 
                     <div class="rounded-xl border border-white/10 bg-slate-950/25 px-3 py-2 text-center">
-                        <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Ruang</p>
-                        <p class="mt-1 text-sm font-semibold text-white">{{ $jadwal->ruang ?? '-' }}</p>
+                        <p class="text-[11px] uppercase tracking-[0.2em] text-slate-400">Kelas</p>
+                        <p class="mt-1 text-sm font-semibold text-white">{{ $jadwal->kelas?->nama_kelas ?? '-' }}</p>
                     </div>
                 </div>
             @empty
@@ -154,7 +154,10 @@
                     <div class="flex items-start justify-between gap-4">
                         <div class="min-w-0">
                             <p class="truncate text-base font-semibold text-slate-100">{{ $nilai->siswa?->nama_siswa ?? '-' }}</p>
-                            <p class="mt-1 text-sm text-slate-400">{{ $nilai->tanggal_nilai?->format('d M Y') ?? '-' }}</p>
+                            <p class="mt-1 text-sm text-slate-400">{{ \App\Support\IndonesianDateTime::date($nilai->tanggal_nilai) }}</p>
+                            <p class="mt-1 text-xs text-slate-500">
+                                {{ $nilai->tahunAjaran?->nama_tahun_ajaran ?? '-' }}{{ $nilai->tahunAjaran?->semester ? ' - '.$nilai->tahunAjaran->semester : '' }}
+                            </p>
                         </div>
                         <div class="shrink-0 rounded-2xl bg-teal-300/15 px-3 py-2 text-right">
                             <p class="text-[11px] uppercase tracking-[0.2em] text-teal-200">Nilai</p>

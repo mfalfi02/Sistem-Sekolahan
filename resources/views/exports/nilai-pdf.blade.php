@@ -10,7 +10,7 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 11px;
             color: #333;
         }
@@ -33,10 +33,10 @@
             font-size: 10px;
         }
         .info-row {
-            display: flex;
             margin: 5px 0;
         }
         .info-label {
+            display: inline-block;
             width: 120px;
             font-weight: bold;
         }
@@ -73,9 +73,13 @@
     </style>
 </head>
 <body>
+    @php
+        $tahunAjaranLabel = $tahunAjaranAktif?->nama_tahun_ajaran ?? '-';
+    @endphp
+
     <div class="header">
-        <h1>📊 LAPORAN REKAP NILAI</h1>
-        <p>Sistem Informasi Sekolah</p>
+        <h1>LAPORAN REKAP NILAI</h1>
+        <p>Sekolah Menengah Teologi Kristen Eben Heizer</p>
     </div>
 
     <div class="info">
@@ -92,8 +96,12 @@
             </div>
         @endif
         <div class="info-row">
+            <span class="info-label">Periode</span>
+            <span>: Tahun Ajaran {{ $tahunAjaranLabel }}</span>
+        </div>
+        <div class="info-row">
             <span class="info-label">Tanggal Cetak</span>
-            <span>: {{ now()->translatedFormat('d F Y H:i') }}</span>
+            <span>: {{ \App\Support\IndonesianDateTime::dateTime(now('Asia/Jakarta')) }}</span>
         </div>
     </div>
 
@@ -105,11 +113,16 @@
                 <th style="width: 15%;">Kelas</th>
                 <th style="width: 20%;">Mata Pelajaran</th>
                 <th style="width: 10%;">Nilai Akhir</th>
+                <th style="width: 15%;">Absensi</th>
+                <th style="width: 15%;">Kontribusi 10%</th>
                 <th style="width: 15%;">Grade</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($records as $record)
+                @php
+                    $attendanceContribution = round(((float) ($record->nilai_absensi ?? 0)) * 0.10, 2);
+                @endphp
                 <tr>
                     <td style="text-align: center;">{{ $loop->iteration }}</td>
                     <td>{{ $record->siswa?->nama_siswa ?? '-' }}</td>
@@ -121,6 +134,14 @@
                             $nilaiClass = $nilai >= 85 ? 'nilai-tinggi' : ($nilai >= 70 ? 'nilai-sedang' : 'nilai-rendah');
                         @endphp
                         <span class="{{ $nilaiClass }}">{{ number_format($nilai, 2, ',', '.') }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        {{ number_format((float) ($record->persentase_absensi ?? 0), 2, ',', '.') }}%
+                        <br>
+                        <small>{{ (int) ($record->absensi_hadir ?? 0) }}/{{ (int) ($record->absensi_total ?? 0) }}</small>
+                    </td>
+                    <td style="text-align: center;">
+                        {{ number_format($attendanceContribution, 2, ',', '.') }}
                     </td>
                     <td style="text-align: center;">
                         @if ($record->nilai_akhir >= 90)
@@ -138,7 +159,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 20px;">Tidak ada data nilai</td>
+                    <td colspan="8" style="text-align: center; padding: 20px;">Tidak ada data nilai</td>
                 </tr>
             @endforelse
         </tbody>
@@ -146,7 +167,7 @@
 
     <div class="footer">
         <p>Laporan ini dihasilkan secara otomatis oleh Sistem Informasi Sekolah</p>
-        <p style="margin-top: 10px;">{{ now()->translatedFormat('l, d F Y') }}</p>
+        <p style="margin-top: 10px;">{{ \App\Support\IndonesianDateTime::dayName(now('Asia/Jakarta')) }}, {{ \App\Support\IndonesianDateTime::date(now('Asia/Jakarta')) }}</p>
     </div>
 </body>
 </html>

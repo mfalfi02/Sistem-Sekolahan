@@ -45,6 +45,51 @@
         </div>
     </section>
 
+    @if (! empty($tahunAjaranList) && $tahunAjaranList->isNotEmpty())
+        <section class="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl sm:p-6">
+            <div class="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div class="max-w-2xl">
+                    <p class="text-xs uppercase tracking-[0.35em] text-teal-200/70">Pengaturan Tahun Ajaran</p>
+                    <h3 class="mt-3 text-2xl font-bold text-white">Aktifkan tahun ajaran dari dashboard</h3>
+                    <p class="mt-3 text-sm leading-6 text-slate-300">
+                        Tahun ajaran yang aktif akan dipakai untuk jadwal, absensi, penilaian, dan tampilan data yang sedang berjalan.
+                        Data lama tetap tersimpan dan bisa dilihat kembali kapan saja.
+                    </p>
+                    @if ($activeTahunAjaran)
+                        <div class="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-100">
+                            <span class="h-2.5 w-2.5 rounded-full bg-emerald-300"></span>
+                            Aktif saat ini: {{ $activeTahunAjaran->nama_tahun_ajaran }} {{ $activeTahunAjaran->semester }}
+                        </div>
+                    @endif
+                </div>
+
+                <form method="POST" action="{{ route('masters.activate', ['tahun-ajaran', optional($activeTahunAjaran)->id ?? $tahunAjaranList->first()->id]) }}" class="min-w-0 rounded-3xl border border-white/10 bg-slate-950/25 p-4 shadow-lg shadow-black/10 lg:w-[28rem]">
+                    @csrf
+                    <label class="block text-sm font-semibold text-slate-200">Pilih Tahun Ajaran</label>
+                    <select
+                        name="tahun_ajaran_id"
+                        class="mt-3 w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-300/50"
+                    >
+                        @foreach ($tahunAjaranList as $tahun)
+                            <option value="{{ $tahun->id }}" @selected((int) ($activeTahunAjaran->id ?? 0) === $tahun->id)>
+                                {{ $tahun->nama_tahun_ajaran }} {{ $tahun->semester }}{{ $tahun->status_aktif ? ' - Aktif' : '' }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <p class="mt-3 text-xs leading-5 text-slate-400">
+                        Menekan tombol aktifkan akan mematikan tahun ajaran lama dan menjadikan pilihan ini sebagai tahun aktif.
+                    </p>
+                    <button
+                        type="submit"
+                        class="mt-4 inline-flex w-full items-center justify-center rounded-2xl bg-teal-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:bg-teal-200"
+                    >
+                        Jadikan Aktif
+                    </button>
+                </form>
+            </div>
+        </section>
+    @endif
+
     <section class="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         @foreach ($cards as $card)
             @php($meta = $cardMeta[$loop->index] ?? $cardMeta[0])
@@ -121,6 +166,16 @@
                     <h3 class="text-2xl font-bold text-white">Aktivitas Per Kelas Hari Ini</h3>
                     <p class="mt-2 text-sm leading-6 text-slate-300">Persentase hadir, guru yang masuk, dan mata pelajaran.</p>
                 </div>
+                <form method="GET" action="{{ route('dashboard') }}" class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <label class="sr-only" for="kelas_id">Pilih Kelas</label>
+                    <select id="kelas_id" name="kelas_id" class="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none focus:border-teal-300/50">
+                        <option value="" @selected(empty($selectedKelasId))>Semua Kelas</option>
+                        @foreach ($kelasFilterList ?? [] as $kelas)
+                            <option value="{{ $kelas->id }}" @selected((int) ($selectedKelasId ?? 0) === $kelas->id)>{{ $kelas->nama_kelas }}</option>
+                        @endforeach
+                    </select>
+                    <button type="submit" class="rounded-2xl bg-indigo-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-indigo-400">Filter</button>
+                </form>
             </div>
 
             <div class="mb-6 flex flex-wrap gap-3">
@@ -164,6 +219,41 @@
                                 </div>
                             </div>
                         </div>
+
+                        @php($jadwalLainnya = collect($activity['jadwal_list'] ?? [])->slice(1))
+                        @if ($jadwalLainnya->isNotEmpty())
+                            <div class="mt-3 space-y-3">
+                                <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Jadwal lainnya hari ini</p>
+                                <div class="space-y-3">
+                                    @foreach ($jadwalLainnya as $jadwal)
+                                        <article class="rounded-2xl border border-white/10 bg-slate-950/[0.16] p-3 md:p-4">
+                                            <div class="grid gap-3 md:grid-cols-[0.55fr_1.45fr] md:items-start">
+                                                <div class="min-w-0">
+                                                    <p class="truncate text-sm md:text-base font-bold text-white">{{ $activity['kelas']->nama_kelas }}</p>
+                                                    <p class="mt-2 text-2xl md:text-3xl font-black leading-none text-white">{{ $jadwal['persentase_hadir'] }}%</p>
+                                                    <p class="mt-1 text-xs md:text-sm text-slate-300">{{ $jadwal['hadir'] }}/{{ $jadwal['total_siswa'] }} hadir</p>
+                                                </div>
+
+                                                <div class="grid gap-2 grid-cols-1 sm:grid-cols-3">
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Guru</p>
+                                                        <p class="mt-1 truncate text-xs md:text-sm font-bold text-white">{{ $jadwal['guru'] }}</p>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Mapel</p>
+                                                        <p class="mt-1 truncate text-xs md:text-sm font-bold text-white">{{ $jadwal['mata_pelajaran'] }}</p>
+                                                    </div>
+                                                    <div class="rounded-xl border border-white/10 bg-white/[0.035] p-2 md:p-3">
+                                                        <p class="text-xs font-bold uppercase tracking-wider text-slate-400">Jam</p>
+                                                        <p class="mt-1 text-xs md:text-sm font-bold text-white">{{ $jadwal['jam'] }}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
 
                         <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-700/50 shadow-inner shadow-black/30">
                             <div

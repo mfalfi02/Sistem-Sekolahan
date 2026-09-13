@@ -14,7 +14,7 @@
                         Pilih kelas dan tanggal, lalu isi kehadiran siswa dengan tampilan yang lebih ringkas, fleksibel, dan nyaman dipakai di desktop maupun mobile.
                     </p>
                 </div>
-                <div class="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                     <div class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur">
                         <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Mode</p>
                         <p class="mt-2 text-lg font-semibold text-white">Input Harian</p>
@@ -23,9 +23,6 @@
                         <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Akses</p>
                         <p class="mt-2 text-lg font-semibold text-white">Guru Pengampu</p>
                     </div>
-                    <a href="{{ route('dashboard') }}" class="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-4 text-sm font-medium text-white transition hover:bg-white/10">
-                        Kembali ke Dashboard
-                    </a>
                 </div>
             </div>
         </section>
@@ -72,7 +69,7 @@
                 </div>
                 <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-4 shadow-2xl">
                     <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Tanggal</p>
-                    <p class="mt-2 text-xl font-semibold text-white">{{ \Carbon\Carbon::parse($tanggal)->format('d M Y') }}</p>
+                    <p class="mt-2 text-xl font-semibold text-white">{{ \App\Support\IndonesianDateTime::date($tanggal) }}</p>
                     <p class="mt-1 text-sm text-slate-400">{{ $hariIni }}</p>
                 </div>
                 <div class="rounded-3xl border border-white/10 bg-slate-900/60 p-4 shadow-2xl">
@@ -99,7 +96,7 @@
                         <select name="jadwal_id" id="jadwal_id" class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-teal-300/50">
                             @foreach ($jadwalAktif as $jadwal)
                                 <option value="{{ $jadwal->id }}" @selected(optional($selectedJadwal)->id === $jadwal->id)>
-                                    {{ $jadwal->mataPelajaran?->nama_mapel }} - {{ $jadwal->guru?->nama_guru }} ({{ substr((string) $jadwal->jam_mulai, 0, 5) }}-{{ substr((string) $jadwal->jam_selesai, 0, 5) }})
+                                    {{ $jadwal->mataPelajaran?->nama_mapel }} - {{ $jadwal->guru?->nama_guru }} ({{ \App\Support\IndonesianDateTime::timeRange($jadwal->jam_mulai, $jadwal->jam_selesai) }})
                                 </option>
                             @endforeach
                         </select>
@@ -118,6 +115,7 @@
                 @csrf
                 <input type="hidden" name="kelas_id" value="{{ $selectedKelas->id }}">
                 <input type="hidden" name="tanggal" value="{{ $tanggal }}">
+                <input type="hidden" name="jadwal_id" value="{{ $selectedJadwal?->id }}">
 
                 <div data-table-filter class="space-y-4">
                     <div class="flex flex-col gap-3 rounded-3xl border border-white/10 bg-slate-900/60 p-4 md:flex-row md:items-center md:justify-between md:p-5">
@@ -128,7 +126,7 @@
                         <input type="search" data-table-filter-input placeholder="Cari siswa..." class="w-full md:max-w-sm rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-teal-300/50">
                     </div>
 
-                    <div class="hidden overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 md:block">
+                    <div data-absensi-controls="desktop" class="hidden overflow-hidden rounded-3xl border border-white/10 bg-slate-900/60 md:block">
                         <div class="overflow-x-auto">
                             <table class="w-full text-sm">
                                 <thead class="bg-white/5">
@@ -170,7 +168,7 @@
                         </div>
                     </div>
 
-                    <div class="space-y-3 md:hidden">
+                    <div data-absensi-controls="mobile" class="space-y-3 md:hidden">
                         @forelse ($students as $student)
                             @php($row = $existingAbsensi[$student->id] ?? null)
                             <div data-table-filter-row class="rounded-2xl border border-white/10 bg-slate-900/60 p-4 shadow">
@@ -216,4 +214,30 @@
         @endif
     </div>
 </div>
+<script>
+    (function () {
+        const desktopQuery = window.matchMedia('(min-width: 768px)');
+        const wrappers = Array.from(document.querySelectorAll('[data-absensi-controls]'));
+
+        const syncDisabledState = () => {
+            const activeLayout = desktopQuery.matches ? 'desktop' : 'mobile';
+
+            wrappers.forEach((wrapper) => {
+                const isActive = wrapper.dataset.absensiControls === activeLayout;
+
+                wrapper.querySelectorAll('input, select, textarea, button').forEach((control) => {
+                    control.disabled = !isActive;
+                });
+            });
+        };
+
+        syncDisabledState();
+
+        if (typeof desktopQuery.addEventListener === 'function') {
+            desktopQuery.addEventListener('change', syncDisabledState);
+        } else if (typeof desktopQuery.addListener === 'function') {
+            desktopQuery.addListener(syncDisabledState);
+        }
+    })();
+</script>
 @endsection

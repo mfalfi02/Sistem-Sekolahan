@@ -10,7 +10,7 @@
             box-sizing: border-box;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 11px;
             color: #333;
         }
@@ -33,10 +33,10 @@
             font-size: 10px;
         }
         .info-row {
-            display: flex;
             margin: 5px 0;
         }
         .info-label {
+            display: inline-block;
             width: 120px;
             font-weight: bold;
         }
@@ -71,9 +71,14 @@
     </style>
 </head>
 <body>
+    @php
+        $hasDateFilter = filled($tanggalDari) && filled($tanggalSampai);
+        $tahunAjaranLabel = $tahunAjaranAktif?->nama_tahun_ajaran ?? '-';
+    @endphp
+
     <div class="header">
-        <h1>📋 LAPORAN REKAP ABSENSI</h1>
-        <p>Sistem Informasi Sekolah</p>
+        <h1>LAPORAN REKAP ABSENSI</h1>
+        <p>Sekolah Menengah Teologi Kristen Eben Heizer</p>
     </div>
 
     <div class="info">
@@ -83,13 +88,31 @@
                 <span>: {{ $selectedKelas->nama_kelas }}</span>
             </div>
         @endif
+        @if ($selectedMapel)
+            <div class="info-row">
+                <span class="info-label">Mata Pelajaran</span>
+                <span>: {{ $selectedMapel->nama_mapel }}</span>
+            </div>
+        @endif
+        @if ($selectedJadwal)
+            <div class="info-row">
+                <span class="info-label">Jadwal</span>
+                <span>: {{ $selectedJadwal->hari }} {{ \App\Support\IndonesianDateTime::timeRange($selectedJadwal->jam_mulai, $selectedJadwal->jam_selesai) }}</span>
+            </div>
+        @endif
         <div class="info-row">
             <span class="info-label">Periode</span>
-            <span>: {{ \Carbon\Carbon::parse($tanggalDari)->format('d M Y') }} - {{ \Carbon\Carbon::parse($tanggalSampai)->format('d M Y') }}</span>
+            <span>: {{ $hasDateFilter ? \App\Support\IndonesianDateTime::date($tanggalDari).' - '.\App\Support\IndonesianDateTime::date($tanggalSampai) : 'Tahun Ajaran '.$tahunAjaranLabel }}</span>
         </div>
+        @if ($hasDateFilter)
+            <div class="info-row">
+                <span class="info-label">Tahun Ajaran</span>
+                <span>: {{ $tahunAjaranLabel }}</span>
+            </div>
+        @endif
         <div class="info-row">
             <span class="info-label">Tanggal Cetak</span>
-            <span>: {{ now()->translatedFormat('d F Y H:i') }}</span>
+            <span>: {{ \App\Support\IndonesianDateTime::dateTime(now('Asia/Jakarta')) }}</span>
         </div>
     </div>
 
@@ -100,34 +123,44 @@
                 <th style="width: 15%;">Tanggal</th>
                 <th style="width: 25%;">Nama Siswa</th>
                 <th style="width: 15%;">Kelas</th>
+                <th style="width: 15%;">Mapel</th>
+                <th style="width: 15%;">Jadwal</th>
                 <th style="width: 15%;">Status</th>
-                <th style="width: 25%;">Keterangan</th>
+                <th style="width: 15%;">Keterangan</th>
             </tr>
         </thead>
         <tbody>
             @forelse ($records as $record)
                 <tr>
                     <td style="text-align: center;">{{ $loop->iteration }}</td>
-                    <td>{{ \Carbon\Carbon::parse($record->tanggal_absen)->format('d M Y') }}</td>
+                    <td>{{ \App\Support\IndonesianDateTime::date($record->tanggal_absen) }}</td>
                     <td>{{ $record->siswa?->nama_siswa ?? '-' }}</td>
                     <td>{{ $record->siswa?->kelas?->nama_kelas ?? '-' }}</td>
+                    <td>{{ $record->jadwal?->mataPelajaran?->nama_mapel ?? '-' }}</td>
+                    <td>
+                        @if ($record->jadwal)
+                            {{ $record->jadwal->hari }} {{ \App\Support\IndonesianDateTime::timeRange($record->jadwal->jam_mulai, $record->jadwal->jam_selesai) }}
+                        @else
+                            -
+                        @endif
+                    </td>
                     <td>
                         <span class="status-{{ $record->status_kehadiran }}">
                             @switch($record->status_kehadiran)
                                 @case('hadir')
-                                    ✓ Hadir
+                                    Hadir
                                     @break
                                 @case('sakit')
-                                    ⚠ Sakit
+                                    Sakit
                                     @break
                                 @case('izin')
-                                    → Izin
+                                    Izin
                                     @break
                                 @case('alfa')
-                                    ✕ Alfa
+                                    Alfa
                                     @break
                                 @case('terlambat')
-                                    ⏱ Terlambat
+                                    Terlambat
                                     @break
                             @endswitch
                         </span>
@@ -136,7 +169,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 20px;">Tidak ada data absensi</td>
+                    <td colspan="8" style="text-align: center; padding: 20px;">Tidak ada data absensi</td>
                 </tr>
             @endforelse
         </tbody>
@@ -144,7 +177,7 @@
 
     <div class="footer">
         <p>Laporan ini dihasilkan secara otomatis oleh Sistem Informasi Sekolah</p>
-        <p style="margin-top: 10px;">{{ now()->translatedFormat('l, d F Y') }}</p>
+        <p style="margin-top: 10px;">{{ \App\Support\IndonesianDateTime::dayName(now('Asia/Jakarta')) }}, {{ \App\Support\IndonesianDateTime::date(now('Asia/Jakarta')) }}</p>
     </div>
 </body>
 </html>

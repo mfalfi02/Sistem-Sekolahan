@@ -10,9 +10,11 @@ use App\Models\Nilai;
 use App\Models\NilaiAkhir;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
+use App\Support\NilaiAkhirCalculator;
 use App\Support\ActivityLogger;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -21,14 +23,18 @@ class NilaiController extends Controller
     public function index(Request $request): View
     {
         $kelasList = Kelas::orderBy('nama_kelas')->get();
-        $mapelList = MataPelajaran::orderBy('nama_mapel')->get();
+        $mapelList = $this->mapelListForGuru($request);
         $jenisList = JenisPenilaian::orderBy('nama_jenis')->get();
         $tahunAjaran = TahunAjaran::where('status_aktif', true)->first() ?? TahunAjaran::orderByDesc('id')->first();
 
         $kelasId = $request->integer('kelas_id') ?: $kelasList->first()?->id;
-        $mapelId = $request->integer('mata_pelajaran_id') ?: $mapelList->first()?->id;
+        $requestedMapelId = $request->integer('mata_pelajaran_id') ?: null;
+
+        $this->authorizeMapelAccess($request, $requestedMapelId);
+
+        $mapelId = $requestedMapelId ?: $mapelList->first()?->id;
         $jenisPenilaianId = $request->integer('jenis_penilaian_id') ?: $jenisList->first()?->id;
-        $tanggal = $request->input('tanggal', now()->toDateString());
+        $tanggal = $request->input('tanggal', now('Asia/Jakarta')->toDateString());
 
         $selectedKelas = $kelasId ? Kelas::find($kelasId) : null;
         $students = collect();
@@ -75,6 +81,8 @@ class NilaiController extends Controller
             'nilai.*.angka' => ['required', 'numeric', 'min:0', 'max:100'],
             'nilai.*.keterangan' => ['nullable', 'string'],
         ]);
+
+        $this->authorizeMapelAccess($request, (int) $data['mata_pelajaran_id']);
 
         $guru = Guru::where('user_id', $request->user()->id)->first();
         $tahunAjaran = TahunAjaran::where('status_aktif', true)->first() ?? TahunAjaran::orderByDesc('id')->first();
@@ -140,68 +148,43 @@ class NilaiController extends Controller
 
     private function recalculateNilaiAkhir(int $kelasId, int $mataPelajaranId, ?int $tahunAjaranId, JenisPenilaian $jenisPenilaian): void
     {
-        if (! $tahunAjaranId) {
+        app(NilaiAkhirCalculator::class)->recalculateForClassMapel($kelasId, $mataPelajaranId, $tahunAjaranId);
+    }
+
+    private function mapelListForGuru(Request $request): Collection
+    {
+        $guru = $this->currentGuru($request);
+
+        if (! $guru) {
+            return collect();
+        }
+
+        return MataPelajaran::query()
+            ->whereHas('jadwal', fn ($query) => $query->where('guru_id', $guru->id))
+            ->orderBy('nama_mapel')
+            ->get();
+    }
+
+    private function currentGuru(Request $request): ?Guru
+    {
+        return Guru::where('user_id', $request->user()->id)->first();
+    }
+
+    private function authorizeMapelAccess(Request $request, ?int $mapelId): void
+    {
+        if (! $mapelId) {
             return;
         }
 
-        $students = Siswa::where('kelas_id', $kelasId)->get();
+        $guru = $this->currentGuru($request);
 
-        foreach ($students as $student) {
-            $nilaiRecords = Nilai::with('siswa')
-                ->where('siswa_id', $student->id)
-                ->where('kelas_id', $kelasId)
-                ->where('mata_pelajaran_id', $mataPelajaranId)
-                ->where('tahun_ajaran_id', $tahunAjaranId)
-                ->get();
-
-            if ($nilaiRecords->isEmpty()) {
-                continue;
-            }
-
-            $bobotMap = JenisPenilaian::pluck('bobot', 'id');
-            $totalBobot = 0.0;
-            $totalNilai = 0.0;
-
-            foreach ($nilaiRecords as $nilaiRecord) {
-                $bobot = (float) ($bobotMap[$nilaiRecord->jenis_penilaian_id] ?? 0);
-                $totalBobot += $bobot;
-                $totalNilai += ((float) $nilaiRecord->nilai) * $bobot;
-            }
-
-            if ($totalBobot <= 0) {
-                continue;
-            }
-
-            $finalScore = round($totalNilai / $totalBobot, 2);
-            $predikat = $this->predikatFromScore($finalScore);
-            $statusLulus = $finalScore >= 75;
-            $semester = TahunAjaran::find($tahunAjaranId)?->semester ?? 'Ganjil';
-
-            NilaiAkhir::updateOrCreate(
-                [
-                    'siswa_id' => $student->id,
-                    'kelas_id' => $kelasId,
-                    'mata_pelajaran_id' => $mataPelajaranId,
-                    'tahun_ajaran_id' => $tahunAjaranId,
-                    'semester' => $semester,
-                ],
-                [
-                    'nilai_akhir' => $finalScore,
-                    'predikat' => $predikat,
-                    'status_lulus' => $statusLulus,
-                    'catatan' => $statusLulus ? 'Tuntas' : 'Perlu remedial',
-                ]
-            );
-        }
-    }
-
-    private function predikatFromScore(float $score): string
-    {
-        return match (true) {
-            $score >= 90 => 'A',
-            $score >= 80 => 'B',
-            $score >= 70 => 'C',
-            default => 'D',
-        };
+        abort_unless(
+            $guru && MataPelajaran::query()
+                ->whereKey($mapelId)
+                ->whereHas('jadwal', fn ($query) => $query->where('guru_id', $guru->id))
+                ->exists(),
+            403,
+            'Anda tidak memiliki akses ke mata pelajaran tersebut.'
+        );
     }
 }

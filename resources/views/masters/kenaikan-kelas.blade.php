@@ -4,6 +4,7 @@
 
 @section('content')
 <div class="space-y-8">
+    @php($autoTargetClass = $targetClassList->first())
     <section class="rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
         <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
@@ -14,9 +15,6 @@
                     Admin tetap bisa mengubah hasil rekomendasi sebelum siswa dipindah kelas.
                 </p>
             </div>
-            <a href="{{ route('dashboard') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15">
-                Kembali
-            </a>
         </div>
     </section>
 
@@ -42,9 +40,9 @@
                 </button>
             </div>
             <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
-                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Rata-rata kelas</p>
-                <p class="mt-2 text-2xl font-semibold">{{ number_format($classAverage, 2) }}</p>
-                <p class="text-sm text-slate-400">Untuk menentukan rekomendasi naik otomatis.</p>
+                <p class="text-xs uppercase tracking-[0.2em] text-slate-400">Patokan KKM</p>
+                <p class="mt-2 text-2xl font-semibold">{{ number_format($kkmAverage, 2) }}</p>
+                <p class="text-sm text-slate-400">Rata-rata KKM mapel yang dijadikan ambang rekomendasi naik.</p>
             </div>
         </form>
     </section>
@@ -55,21 +53,20 @@
 
         <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
             <div class="grid gap-4 lg:grid-cols-2">
-                <div>
-                    <label class="mb-2 block text-sm font-medium text-slate-300">Kelas Tujuan Default</label>
-                    <select name="kelas_tujuan_default_id" class="w-full appearance-none rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50">
-                        <option value="">- Pilih kelas tujuan -</option>
-                        @foreach ($targetClassList as $kelas)
-                            <option value="{{ $kelas->id }}" @selected(old('kelas_tujuan_default_id') == $kelas->id)>{{ $kelas->nama_kelas }}</option>
-                        @endforeach
-                    </select>
-                    @error('kelas_tujuan_default_id')<p class="mt-2 text-sm text-rose-300">{{ $message }}</p>@enderror
-                </div>
                 <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
                     <p class="text-sm text-slate-400">Cara pakai</p>
                     <p class="mt-2 text-sm text-slate-300">
-                        Centang siswa yang ingin dipindah. Jika kelas tujuan per siswa kosong, sistem memakai kelas tujuan default.
+                        Centang siswa yang ingin dipindah, lalu simpan. Sistem akan mengarahkan siswa ke kelas jenjang berikutnya secara otomatis.
                     </p>
+                </div>
+                <div class="rounded-2xl border border-white/10 bg-white/5 p-4">
+                    <p class="text-sm text-slate-400">Kelas tujuan otomatis</p>
+                    @if ($hasPromotionTarget)
+                        <p class="mt-2 text-base font-semibold text-white">{{ $autoTargetClass?->nama_kelas ?? '-' }}</p>
+                        <p class="mt-1 text-sm text-slate-300">Siswa yang dicentang akan dipindahkan ke kelas ini.</p>
+                    @else
+                        <p class="mt-2 text-base font-semibold text-rose-300">{{ $promotionBlockedMessage }}</p>
+                    @endif
                 </div>
             </div>
 
@@ -87,18 +84,16 @@
                             <tr>
                                 <th class="px-4 py-4 text-sm font-semibold text-slate-200">Naik</th>
                                 <th class="px-4 py-4 text-sm font-semibold text-slate-200">Siswa</th>
-                                <th class="px-4 py-4 text-sm font-semibold text-slate-200">Kelas Saat Ini</th>
-                                <th class="px-4 py-4 text-sm font-semibold text-slate-200">Rata-rata</th>
-                                <th class="px-4 py-4 text-sm font-semibold text-slate-200">Tuntas</th>
-                                <th class="px-4 py-4 text-sm font-semibold text-slate-200">Rekomendasi</th>
-                                <th class="px-4 py-4 text-sm font-semibold text-slate-200">Kelas Tujuan</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-white/10">
+                        <th class="px-4 py-4 text-sm font-semibold text-slate-200">Kelas Saat Ini</th>
+                        <th class="px-4 py-4 text-sm font-semibold text-slate-200">Rata-rata</th>
+                        <th class="px-4 py-4 text-sm font-semibold text-slate-200">Tuntas</th>
+                        <th class="px-4 py-4 text-sm font-semibold text-slate-200">Rekomendasi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/10">
                             @forelse ($students as $row)
                                 @php($student = $row['siswa'])
                                 @php($checkedIds = array_map('intval', (array) old('naik_ids', $row['rekomendasi_naik'] ? [$student->id] : [])))
-                                @php($targetValue = old('target_kelas_id.' . $student->id))
                                 <tr data-table-filter-row class="hover:bg-white/5">
                                     <td class="px-4 py-4">
                                         <input
@@ -123,18 +118,10 @@
                                             <span class="rounded-full bg-rose-500/15 px-3 py-1 text-rose-300">Tidak Naik</span>
                                         @endif
                                     </td>
-                                    <td class="px-4 py-4">
-                                        <select name="target_kelas_id[{{ $student->id }}]" class="w-full appearance-none rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-teal-300/50">
-                                            <option value="">- Ikuti kelas default -</option>
-                                            @foreach ($targetClassList as $kelas)
-                                                <option value="{{ $kelas->id }}" @selected((string) $targetValue === (string) $kelas->id)>{{ $kelas->nama_kelas }}</option>
-                                            @endforeach
-                                        </select>
-                                    </td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="7" class="px-6 py-10 text-center text-sm text-slate-400">
+                                    <td colspan="6" class="px-6 py-10 text-center text-sm text-slate-400">
                                         Belum ada siswa di kelas ini atau nilai akhir belum tersedia.
                                     </td>
                                 </tr>
@@ -146,13 +133,10 @@
             </div>
         </section>
 
-        <div class="flex gap-3">
-            <button class="rounded-2xl bg-teal-300 px-5 py-3 font-semibold text-slate-950 hover:bg-teal-200">
+        <div class="flex">
+            <button class="rounded-2xl bg-teal-300 px-5 py-3 font-semibold text-slate-950 hover:bg-teal-200 disabled:cursor-not-allowed disabled:opacity-60" @disabled(! $hasPromotionTarget)>
                 Simpan Pembagian Kelas
             </button>
-            <a href="{{ route('dashboard') }}" class="rounded-2xl border border-white/10 bg-white/5 px-5 py-3 font-semibold text-slate-200 hover:bg-white/15">
-                Batal
-            </a>
         </div>
     </form>
 </div>

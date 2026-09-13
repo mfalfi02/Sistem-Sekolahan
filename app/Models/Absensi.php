@@ -47,4 +47,9 @@ class Absensi extends Model
     {
         return $this->belongsTo(Jadwal::class);
     }
+
+    public function tahunAjaran(): BelongsTo
+    {
+        return $this->belongsTo(TahunAjaran::class);
+    }
 }

@@ -11,11 +11,13 @@ class NilaiExport implements FromCollection, WithHeadings, WithMapping
 {
     protected $kelasId;
     protected $mapelId;
+    protected $allowedMapelIds;
 
-    public function __construct($kelasId = null, $mapelId = null)
+    public function __construct($kelasId = null, $mapelId = null, ?array $allowedMapelIds = null)
     {
         $this->kelasId = $kelasId;
         $this->mapelId = $mapelId;
+        $this->allowedMapelIds = $allowedMapelIds;
     }
 
     public function collection()
@@ -30,6 +32,10 @@ class NilaiExport implements FromCollection, WithHeadings, WithMapping
             $query->where('mata_pelajaran_id', $this->mapelId);
         }
 
+        if ($this->allowedMapelIds !== null) {
+            $query->whereIn('mata_pelajaran_id', $this->allowedMapelIds);
+        }
+
         return $query->orderByDesc('nilai_akhir')->get();
     }
 
@@ -41,6 +47,7 @@ class NilaiExport implements FromCollection, WithHeadings, WithMapping
             'Kelas',
             'Mata Pelajaran',
             'Nilai Akhir',
+            'Absensi',
             'Predikat',
             'Status',
         ];
@@ -54,6 +61,7 @@ class NilaiExport implements FromCollection, WithHeadings, WithMapping
             $nilai->kelas->nama_kelas ?? '-',
             $nilai->mataPelajaran->nama_mapel ?? '-',
             number_format((float) $nilai->nilai_akhir, 2),
+            number_format((float) ($nilai->persentase_absensi ?? 0), 2).'%',
             $nilai->predikat ?? '-',
             $nilai->status_lulus ? 'Tuntas' : 'Belum Tuntas',
         ];

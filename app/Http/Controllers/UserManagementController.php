@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Guru;
 use App\Models\Kelas;
 use App\Models\Siswa;
 use App\Models\User;
@@ -19,7 +20,7 @@ class UserManagementController extends Controller
     {
         $search = trim((string) $request->input('search', ''));
 
-        $query = User::whereIn('role', ['admin', 'guru'])->with('siswa.kelas');
+        $query = User::whereIn('role', ['admin', 'guru', 'kepala_sekolah'])->with('siswa.kelas');
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -57,6 +58,7 @@ class UserManagementController extends Controller
                 'status_aktif' => $data['status_aktif'] ?? false,
             ]);
 
+            $this->syncGuruProfile($user, $data);
             $this->syncSiswaProfile($user, $data);
         });
 
@@ -73,7 +75,7 @@ class UserManagementController extends Controller
 
     public function edit(User $user): View
     {
-        $user->loadMissing('siswa.kelas');
+        $user->loadMissing('siswa.kelas', 'guru');
 
         return view('users.form', [
             'user' => $user,
@@ -101,7 +103,9 @@ class UserManagementController extends Controller
 
             $user->update($payload);
 
-            $this->syncSiswaProfile($user->fresh(), $data);
+            $freshUser = $user->fresh();
+            $this->syncGuruProfile($freshUser, $data);
+            $this->syncSiswaProfile($freshUser, $data);
         });
 
         ActivityLogger::record(
@@ -115,13 +119,17 @@ class UserManagementController extends Controller
         return redirect()->route('users.index')->with('success', 'User berhasil diperbarui.');
     }
 
-    public function destroy(User $user): RedirectResponse
+    public function destroy(Request $request, User $user): RedirectResponse
     {
         if ($user->id === auth()->id()) {
             return back()->withErrors(['user' => 'Anda tidak bisa menghapus akun sendiri.']);
         }
 
-        $user->delete();
+        DB::transaction(function () use ($user): void {
+            $user->guru?->delete();
+            $user->siswa?->delete();
+            $user->delete();
+        });
 
         ActivityLogger::record(
             $request->user(),
@@ -148,9 +156,13 @@ class UserManagementController extends Controller
                 $user ? Rule::unique('users', 'email')->ignore($user->id) : Rule::unique('users', 'email'),
             ],
             'password' => [$user ? 'nullable' : 'required', 'string', Password::min(8)],
-            'role' => ['required', 'in:admin,guru'],
+            'role' => ['required', 'in:admin,guru,kepala_sekolah'],
             'phone' => ['nullable', 'string', 'max:20'],
             'status_aktif' => ['nullable', 'boolean'],
+            'nip' => ['required_if:role,guru', 'nullable', 'string', 'max:30'],
+            'jenis_kelamin' => ['required_if:role,guru', 'nullable', 'in:Laki-laki,Perempuan'],
+            'tanggal_lahir' => ['required_if:role,guru', 'nullable', 'date'],
+            'alamat' => ['required_if:role,guru', 'nullable', 'string'],
         ]);
 
         if (blank($data['password'] ?? null)) {
@@ -178,6 +190,28 @@ class UserManagementController extends Controller
                 'no_hp' => $data['phone'] ?? $user->siswa?->no_hp,
                 'foto' => $user->siswa?->foto,
                 'kelas_id' => $data['kelas_id'] ?? $user->siswa?->kelas_id,
+            ]
+        );
+    }
+
+    private function syncGuruProfile(User $user, array $data): void
+    {
+        if ($user->role !== 'guru') {
+            $user->guru?->delete();
+
+            return;
+        }
+
+        Guru::updateOrCreate(
+            ['user_id' => $user->id],
+            [
+                'nip' => $data['nip'] ?? $user->guru?->nip,
+                'nama_guru' => $data['name'],
+                'jenis_kelamin' => $data['jenis_kelamin'] ?? $user->guru?->jenis_kelamin,
+                'tanggal_lahir' => $data['tanggal_lahir'] ?? $user->guru?->tanggal_lahir,
+                'alamat' => $data['alamat'] ?? $user->guru?->alamat,
+                'no_hp' => $data['phone'] ?? $user->guru?->no_hp,
+                'foto' => $user->guru?->foto,
             ]
         );
     }

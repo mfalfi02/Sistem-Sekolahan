@@ -48,8 +48,10 @@
 
             <div>
                 <label class="mb-2 block text-sm font-medium text-slate-300">Password</label>
-                <input type="password" name="password" required
-                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none ring-0 placeholder:text-slate-500 focus:border-teal-300/50">
+                <x-password-field name="password" placeholder="Masukkan password" input-class="pr-14" />
+                <p class="mt-2 text-xs text-slate-400">
+                    Lupa password? hubungi TU sekolahan.
+                </p>
             </div>
 
             <label class="flex items-center gap-3 text-sm text-slate-300">

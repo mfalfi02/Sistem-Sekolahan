@@ -8,6 +8,10 @@
                 <p class="text-xs uppercase tracking-[0.3em] text-teal-200/70">Detail Nilai</p>
                 <h2 class="mt-3 text-3xl font-semibold">{{ $mapel->nama_mapel }}</h2>
                 <p class="mt-2 text-slate-300">Rincian nilai per jenis penilaian dan nilai akhir.</p>
+                <p class="mt-2 text-sm text-teal-200/80">Nilai akhir mapel ini dihitung dari 90% nilai akademik dan 10% absensi.</p>
+                <p class="mt-2 text-sm text-slate-300">
+                    Nilai akademik memakai bobot tiap jenis penilaian. Misalnya UTS 98 berbobot 30% dan UAS 90 berbobot 40%, lalu sistem menjumlahkan kontribusi masing-masing dan menormalkannya dengan total bobot yang tersedia.
+                </p>
             </div>
             <a href="{{ route('siswa.nilai.index') }}" class="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium hover:bg-white/15">
                 Kembali ke Detail Nilai
@@ -40,7 +44,12 @@
                     <tbody class="divide-y divide-white/10">
                         @forelse ($nilaiDetail as $item)
                             <tr data-table-filter-row class="hover:bg-white/5">
-                                <td class="px-6 py-4 text-sm text-slate-300">{{ $item->tanggal_nilai?->format('d M Y') ?? '-' }}</td>
+                                <td class="px-6 py-4 text-sm text-slate-300">
+                                    <div>{{ \App\Support\IndonesianDateTime::date($item->tanggal_nilai) }}</div>
+                                    <div class="mt-1 text-xs text-slate-500">
+                                        {{ $item->tahunAjaran?->nama_tahun_ajaran ?? '-' }}{{ $item->tahunAjaran?->semester ? ' - '.$item->tahunAjaran->semester : '' }}
+                                    </div>
+                                </td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->jenisPenilaian?->nama_jenis ?? '-' }}</td>
                                 <td class="px-6 py-4 text-sm font-semibold text-slate-300">{{ number_format((float) $item->nilai, 2) }}</td>
                                 <td class="px-6 py-4 text-sm text-slate-300">{{ $item->guru?->user?->name ?? '-' }}</td>
@@ -63,11 +72,15 @@
                 @if ($nilaiAkhirList->isNotEmpty())
                     <div class="space-y-3">
                         @foreach ($nilaiAkhirList as $nilaiAkhir)
+                            @php
+                                $attendanceContribution = round(((float) ($nilaiAkhir->nilai_absensi ?? 0)) * 0.10, 2);
+                            @endphp
                             <div class="rounded-2xl bg-white/5 p-4">
                                 <div class="flex items-center justify-between gap-4">
                                     <div>
                                         <p class="text-sm text-slate-400">{{ $nilaiAkhir->kelas?->nama_kelas ?? '-' }} Semester {{ $nilaiAkhir->semester }}</p>
                                         <p class="text-sm text-slate-500">{{ $nilaiAkhir->tahunAjaran?->nama_tahun_ajaran ?? '-' }}</p>
+                                        <p class="mt-1 text-xs text-slate-500">{{ $nilaiAkhir->tahunAjaran?->semester ?? '-' }}</p>
                                     </div>
                                     <div class="text-right">
                                         <p class="text-2xl font-bold text-teal-300">{{ number_format((float) $nilaiAkhir->nilai_akhir, 2) }}</p>
@@ -75,6 +88,30 @@
                                     </div>
                                 </div>
                                 <p class="mt-3 text-sm text-slate-300">{{ $nilaiAkhir->status_lulus ? 'Tuntas' : 'Perlu remedial' }}</p>
+                                <div class="mt-4 grid gap-3 sm:grid-cols-2">
+                                    <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                                        <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Absensi</p>
+                                        <p class="mt-2 text-sm font-semibold text-white">
+                                            {{ number_format((float) ($nilaiAkhir->persentase_absensi ?? 0), 2) }}%
+                                        </p>
+                                        <p class="text-xs text-slate-500">
+                                            {{ (int) ($nilaiAkhir->absensi_hadir ?? 0) }}/{{ (int) ($nilaiAkhir->absensi_total ?? 0) }} hadir
+                                        </p>
+                                    </div>
+                                    <div class="rounded-xl border border-white/10 bg-slate-950/40 p-3">
+                                        <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Kontribusi 10%</p>
+                                        <p class="mt-2 text-sm font-semibold text-white">
+                                            {{ number_format($attendanceContribution, 2) }} poin
+                                        </p>
+                                        <p class="text-xs text-slate-500">Masuk ke nilai akhir mapel ini</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-3 rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                                <p class="text-xs uppercase tracking-[0.18em] text-slate-400">Catatan perhitungan</p>
+                                <p class="mt-2 text-sm text-slate-300">
+                                    Nilai akhir akademik dan predikat diambil dari seluruh nilai yang sudah masuk, dibobot sesuai jenis penilaian, lalu digabung dengan absensi.
+                                </p>
                             </div>
                         @endforeach
                     </div>

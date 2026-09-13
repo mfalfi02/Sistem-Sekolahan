@@ -10,12 +10,14 @@ use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Models\User;
 use App\Support\ActivityLogger;
+use Dompdf\Dompdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class MasterDataController extends Controller
@@ -255,13 +257,44 @@ class MasterDataController extends Controller
 
     public function index(Request $request, string $type): View
     {
+        if ($request->user()?->role === 'kepala_sekolah') {
+            abort_unless(in_array($type, ['guru', 'siswa'], true), 403, 'Role kepala sekolah hanya dapat melihat data guru dan siswa.');
+        }
+
         $schema = $this->schema($type);
         $model = $this->modelFor($type);
         $query = $model::query();
         $search = trim((string) $request->input('search', ''));
+        $kelasList = [];
+        $selectedKelas = null;
+        $activeTahunAjaran = null;
 
         if (! empty($schema['relations'])) {
             $query->with($schema['relations']);
+        }
+
+        if ($type === 'siswa') {
+            $kelasList = Kelas::query()->orderBy('nama_kelas')->get();
+            $kelasId = $request->integer('kelas_id');
+
+            if ($kelasId) {
+                $query->where('kelas_id', $kelasId);
+                $selectedKelas = $kelasList->firstWhere('id', $kelasId);
+            }
+        }
+
+        if ($type === 'jadwal') {
+            $kelasList = Kelas::query()->orderBy('nama_kelas')->get();
+            $kelasId = $request->integer('kelas_id');
+
+            if ($kelasId) {
+                $query->where('kelas_id', $kelasId);
+                $selectedKelas = $kelasList->firstWhere('id', $kelasId);
+            }
+        }
+
+        if ($type === 'tahun-ajaran') {
+            $activeTahunAjaran = TahunAjaran::where('status_aktif', true)->first();
         }
 
         // Add search functionality
@@ -285,6 +318,61 @@ class MasterDataController extends Controller
             'type' => $type,
             'records' => $query->latest()->paginate(10)->withQueryString(),
             'search' => $search,
+            'kelasList' => $kelasList,
+            'selectedKelas' => $selectedKelas,
+            'activeTahunAjaran' => $activeTahunAjaran,
+        ]);
+    }
+
+    public function exportPdf(Request $request, string $type)
+    {
+        abort_unless($type === 'jadwal', 404);
+
+        $schema = $this->schema($type);
+        $search = trim((string) $request->input('search', ''));
+        $kelasId = $request->integer('kelas_id');
+        $kelasList = Kelas::query()->orderBy('nama_kelas')->get();
+        $selectedKelas = $kelasId ? $kelasList->firstWhere('id', $kelasId) : null;
+
+        $query = Jadwal::with(['kelas', 'guru', 'mataPelajaran', 'tahunAjaran'])
+            ->orderBy('kelas_id')
+            ->orderBy('hari')
+            ->orderBy('jam_mulai');
+
+        if ($kelasId) {
+            $query->where('kelas_id', $kelasId);
+        }
+
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search): void {
+                $builder
+                    ->whereHas('kelas', fn ($kelas) => $kelas->where('nama_kelas', 'like', "%{$search}%"))
+                    ->orWhereHas('guru', fn ($guru) => $guru->where('nama_guru', 'like', "%{$search}%"))
+                    ->orWhereHas('mataPelajaran', fn ($mapel) => $mapel->where('nama_mapel', 'like', "%{$search}%"))
+                    ->orWhere('hari', 'like', "%{$search}%")
+                    ->orWhere('ruang', 'like', "%{$search}%");
+            });
+        }
+
+        $records = $query->get();
+
+        $html = view('exports.jadwal-pdf', [
+            'records' => $records,
+            'schema' => $schema,
+            'search' => $search,
+            'selectedKelas' => $selectedKelas,
+            'kelasList' => $kelasList,
+            'printedAt' => now('Asia/Jakarta'),
+        ])->render();
+
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml($html);
+        $dompdf->setPaper('A4', 'landscape');
+        $dompdf->render();
+
+        return response($dompdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="jadwal.pdf"',
         ]);
     }
 
@@ -292,12 +380,14 @@ class MasterDataController extends Controller
     {
         $schema = $this->schema($type);
         $options = $this->sectionOptions($schema);
+        $extra = $this->formExtras($type);
 
         return view('masters.form', [
             'schema' => $schema,
             'type' => $type,
             'record' => null,
             'options' => $options,
+            ...$extra,
             'mode' => 'create',
         ]);
     }
@@ -327,12 +417,14 @@ class MasterDataController extends Controller
         $schema = $this->schema($type);
         $record = $this->modelFor($type)::query()->findOrFail($id);
         $options = $this->sectionOptions($schema);
+        $extra = $this->formExtras($type, $record);
 
         return view('masters.form', [
             'schema' => $schema,
             'type' => $type,
             'record' => $record,
             'options' => $options,
+            ...$extra,
             'mode' => 'edit',
         ]);
     }
@@ -358,31 +450,61 @@ class MasterDataController extends Controller
             ->with('success', $schema['title'].' berhasil diperbarui.');
     }
 
-    public function destroy(string $type, int $id): RedirectResponse
+    public function activate(Request $request, string $type, int $id): RedirectResponse
     {
-        $schema = $this->schema($type);
-        $record = $this->modelFor($type)::query()->findOrFail($id);
+        abort_unless($type === 'tahun-ajaran', 404);
 
-        DB::transaction(function () use ($type, $record): void {
-            if (in_array($type, ['guru', 'siswa'], true)) {
-                $record->user?->delete();
-            }
+        $selectedId = $request->integer('tahun_ajaran_id') ?: $id;
+        $tahunAjaran = TahunAjaran::query()->findOrFail($selectedId);
 
-            $record->delete();
+        DB::transaction(function () use ($tahunAjaran): void {
+            TahunAjaran::query()->whereKeyNot($tahunAjaran->id)->update([
+                'status_aktif' => false,
+            ]);
+
+            $tahunAjaran->update([
+                'status_aktif' => true,
+            ]);
         });
 
         ActivityLogger::record(
             $request->user(),
-            'master_delete',
-            'Hapus '.$schema['title'],
-            'Data '.$schema['title'].' berhasil dihapus.',
+            'master_update',
+            'Aktifkan Tahun Ajaran',
+            'Tahun ajaran '.$tahunAjaran->nama_tahun_ajaran.' '.$tahunAjaran->semester.' dijadikan aktif.',
             route('masters.index', $type)
         );
 
         return redirect()
             ->route('masters.index', $type)
-            ->with('success', $schema['title'].' berhasil dihapus.');
+            ->with('success', 'Tahun ajaran '.$tahunAjaran->nama_tahun_ajaran.' '.$tahunAjaran->semester.' berhasil diaktifkan.');
     }
+
+  public function destroy(Request $request, string $type, int $id): RedirectResponse
+{
+    $schema = $this->schema($type);
+    $record = $this->modelFor($type)::query()->findOrFail($id);
+
+    DB::transaction(function () use ($type, $record): void {
+        if (in_array($type, ['guru', 'siswa'], true)) {
+            $record->user?->delete();
+        }
+
+        $record->delete();
+    });
+
+    ActivityLogger::record(
+        $request->user(),
+        'master_delete',
+        'Hapus '.$schema['title'],
+        'Data '.$schema['title'].' berhasil dihapus.',
+        route('masters.index', $type)
+    );
+
+    return redirect()
+        ->route('masters.index', $type)
+        ->with('success', $schema['title'].' berhasil dihapus.');
+}
 
     /**
      * @return array<string, mixed>
@@ -411,7 +533,7 @@ class MasterDataController extends Controller
      */
     private function validateRequest(Request $request, string $type, mixed $record = null): array
     {
-        return match ($type) {
+        $validated = match ($type) {
             'tahun-ajaran' => $request->validate([
                 'nama_tahun_ajaran' => ['required', 'string', 'max:20'],
                 'semester' => ['required', 'string', 'max:20'],
@@ -487,7 +609,6 @@ class MasterDataController extends Controller
                 ])),
                 'password' => [$record ? 'nullable' : 'required', 'string', Password::min(8)],
                 'phone' => ['nullable', 'string', 'max:20'],
-                'status_aktif' => ['nullable', 'boolean'],
                 'nis' => array_values(array_filter([
                     'required',
                     'string',
@@ -509,6 +630,18 @@ class MasterDataController extends Controller
             ]),
             default => [],
         };
+
+        if ($type === 'jadwal') {
+            $allowedMapelIds = $this->allowedMapelIdsForGuru((int) $validated['guru_id']);
+
+            if (! empty($allowedMapelIds) && ! in_array((int) $validated['mata_pelajaran_id'], $allowedMapelIds, true)) {
+                throw ValidationException::withMessages([
+                    'mata_pelajaran_id' => 'Mata pelajaran harus sesuai dengan guru yang dipilih.',
+                ]);
+            }
+        }
+
+        return $validated;
     }
 
     private function persist(string $type, array $validated, mixed $record = null): void
@@ -529,10 +662,17 @@ class MasterDataController extends Controller
 
             if ($record) {
                 $record->update($payload);
+                if ($type === 'tahun-ajaran' && ($payload['status_aktif'] ?? false)) {
+                    $this->activateTahunAjaran($record->id);
+                }
                 return;
             }
 
-            $model::create($payload);
+            $created = $model::create($payload);
+
+            if ($type === 'tahun-ajaran' && ($payload['status_aktif'] ?? false)) {
+                $this->activateTahunAjaran($created->id);
+            }
         });
     }
 
@@ -580,7 +720,7 @@ class MasterDataController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,
-            'status_aktif' => $validated['status_aktif'] ?? false,
+            'status_aktif' => true,
         ];
 
         if (filled($validated['password'] ?? null)) {
@@ -655,5 +795,69 @@ class MasterDataController extends Controller
             ],
             default => $validated,
         };
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function formExtras(string $type, mixed $record = null): array
+    {
+        if ($type !== 'jadwal') {
+            return [];
+        }
+
+        $guruMapelOptions = $this->guruMapelOptions();
+        $selectedGuruId = old('guru_id', data_get($record, 'guru_id'));
+        $selectedMapelId = old('mata_pelajaran_id', data_get($record, 'mata_pelajaran_id'));
+
+        return [
+            'guruMapelOptions' => $guruMapelOptions,
+            'selectedGuruId' => $selectedGuruId,
+            'selectedMapelId' => $selectedMapelId,
+        ];
+    }
+
+    /**
+     * @return array<int, array<int, string>>
+     */
+    private function guruMapelOptions(): array
+    {
+        return Jadwal::query()
+            ->with(['mataPelajaran'])
+            ->get()
+            ->groupBy('guru_id')
+            ->map(function ($items) {
+                return $items
+                    ->pluck('mataPelajaran', 'mata_pelajaran_id')
+                    ->filter()
+                    ->mapWithKeys(fn ($mapel) => [$mapel->id => $mapel->nama_mapel])
+                    ->all();
+            })
+            ->all();
+    }
+
+    /**
+     * @return array<int>
+     */
+    private function allowedMapelIdsForGuru(int $guruId): array
+    {
+        return Jadwal::query()
+            ->where('guru_id', $guruId)
+            ->pluck('mata_pelajaran_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function activateTahunAjaran(int $tahunAjaranId): void
+    {
+        TahunAjaran::query()->whereKeyNot($tahunAjaranId)->update([
+            'status_aktif' => false,
+        ]);
+
+        TahunAjaran::query()->whereKey($tahunAjaranId)->update([
+            'status_aktif' => true,
+        ]);
     }
 }

@@ -24,7 +24,8 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $role = $user?->role;
-        $today = now()->toDateString();
+        $now = now('Asia/Jakarta');
+        $today = $now->toDateString();
         $selectedKelasId = $request->integer('kelas_id');
 
         $data = [];
@@ -33,6 +34,7 @@ class DashboardController extends Controller
             'admin', 'tu' => $this->adminData($data, $today, $selectedKelasId),
             'guru' => $this->guruData($data, $user, $today),
             'siswa' => $this->siswaData($data, $user),
+            'kepala_sekolah' => $this->kepalaSekolahData($data, $today),
             default => $this->defaultData($data),
         };
 
@@ -82,9 +84,11 @@ class DashboardController extends Controller
 
     private function adminData(array &$data, string $today, ?int $selectedKelasId = null): void
     {
-        $hariIni = $this->indonesianDay(now()->dayOfWeekIso);
+        $hariIni = $this->indonesianDay(now('Asia/Jakarta')->dayOfWeekIso);
         $kelasFilterList = Kelas::orderBy('nama_kelas')->get();
         $kelasList = Kelas::with(['waliGuru.user', 'tahunAjaran'])->orderBy('nama_kelas')->get();
+        $tahunAjaranList = TahunAjaran::orderByDesc('id')->get();
+        $activeTahunAjaran = $tahunAjaranList->firstWhere('status_aktif', true) ?? $tahunAjaranList->first();
 
         if ($selectedKelasId) {
             $kelasList = $kelasList->where('id', $selectedKelasId)->values();
@@ -128,16 +132,29 @@ class DashboardController extends Controller
                 ->count();
             $persentaseHadir = $totalSiswa > 0 ? round(($hadir / $totalSiswa) * 100, 1) : 0;
             $jadwalKelas = $jadwalHariIni->get($kelas->id, collect());
-            $jadwalUtama = $jadwalKelas->first();
+            $jadwalList = $jadwalKelas->map(function (Jadwal $jadwal) use ($persentaseHadir, $hadir, $totalSiswa): array {
+                return [
+                    'persentase_hadir' => $persentaseHadir,
+                    'hadir' => $hadir,
+                    'total_siswa' => $totalSiswa,
+                    'mata_pelajaran' => $jadwal->mataPelajaran?->nama_mapel ?? '-',
+                    'guru' => $jadwal->guru?->nama_guru ?? '-',
+                    'jam' => $jadwal->jam_mulai && $jadwal->jam_selesai
+                        ? substr((string) $jadwal->jam_mulai, 0, 5).' - '.substr((string) $jadwal->jam_selesai, 0, 5)
+                        : '-',
+                ];
+            })->values();
+            $jadwalUtama = $jadwalList->first();
 
             return [
                 'kelas' => $kelas,
                 'total_siswa' => $totalSiswa,
                 'hadir' => $hadir,
                 'persentase_hadir' => $persentaseHadir,
-                'guru' => $jadwalUtama?->guru?->nama_guru ?? $kelas->waliGuru?->nama_guru ?? '-',
-                'mata_pelajaran' => $jadwalUtama?->mataPelajaran?->nama_mapel ?? '-',
-                'jam' => $jadwalUtama ? trim(($jadwalUtama->jam_mulai ? substr((string) $jadwalUtama->jam_mulai, 0, 5) : '-') . ' - ' . ($jadwalUtama->jam_selesai ? substr((string) $jadwalUtama->jam_selesai, 0, 5) : '-')) : '-',
+                'guru' => $jadwalUtama['guru'] ?? $kelas->waliGuru?->nama_guru ?? '-',
+                'mata_pelajaran' => $jadwalUtama['mata_pelajaran'] ?? '-',
+                'jam' => $jadwalUtama['jam'] ?? '-',
+                'jadwal_list' => $jadwalList,
                 'jumlah_jadwal' => $jadwalKelas->count(),
             ];
         })->values();
@@ -147,12 +164,14 @@ class DashboardController extends Controller
         $data['selectedKelasLabel'] = $selectedKelasId
             ? $kelasFilterList->firstWhere('id', $selectedKelasId)?->nama_kelas
             : 'Semua Kelas';
+        $data['tahunAjaranList'] = $tahunAjaranList;
+        $data['activeTahunAjaran'] = $activeTahunAjaran;
     }
 
     private function guruData(array &$data, $user, string $today): void
     {
         $guru = Guru::where('user_id', $user->id)->first();
-        $hariIni = $this->indonesianDay(now()->dayOfWeekIso);
+        $hariIni = $this->indonesianDay(now('Asia/Jakarta')->dayOfWeekIso);
         $jadwalHariIni = Jadwal::with(['kelas', 'mataPelajaran'])
             ->where('guru_id', $guru?->id)
             ->where('hari', $hariIni)
@@ -167,15 +186,47 @@ class DashboardController extends Controller
             ['label' => 'Mapel', 'value' => (string) MataPelajaran::count(), 'icon' => '📚'],
         ];
 
-        $data['recentNilai'] = Nilai::where('guru_id', $guru?->id)->latest()->limit(5)->get();
+        $data['recentNilai'] = Nilai::with('tahunAjaran')
+            ->where('guru_id', $guru?->id)
+            ->latest()
+            ->limit(5)
+            ->get();
         $data['jadwalHariIni'] = $jadwalHariIni;
         $data['hariIni'] = $hariIni;
+    }
+
+    private function kepalaSekolahData(array &$data, string $today): void
+    {
+        $data['cards'] = [
+            ['label' => 'Guru', 'value' => (string) Guru::count(), 'icon' => '👩‍🏫'],
+            ['label' => 'Siswa', 'value' => (string) Siswa::count(), 'icon' => '👦'],
+            ['label' => 'Absensi Hari Ini', 'value' => (string) Absensi::whereDate('tanggal_absen', $today)->count(), 'icon' => '📅'],
+            ['label' => 'Nilai Akhir', 'value' => (string) NilaiAkhir::count(), 'icon' => '📊'],
+        ];
+
+        $data['reportLinks'] = [
+            ['label' => 'Laporan Absensi', 'href' => route('rekap.absensi'), 'note' => 'Pantau kehadiran siswa per kelas dan mapel.'],
+            ['label' => 'Laporan Nilai', 'href' => route('rekap.nilai'), 'note' => 'Lihat hasil akhir dan predikat akademik.'],
+            ['label' => 'Data Guru', 'href' => route('masters.index', 'guru'), 'note' => 'Cek daftar nama guru yang aktif.'],
+            ['label' => 'Data Siswa', 'href' => route('masters.index', 'siswa'), 'note' => 'Cek daftar nama siswa per kelas.'],
+        ];
+
+        $data['recentAbsensi'] = Absensi::with(['siswa.kelas', 'jadwal.mataPelajaran'])
+            ->latest('tanggal_absen')
+            ->latest('id')
+            ->limit(5)
+            ->get();
+
+        $data['recentNilaiAkhir'] = NilaiAkhir::with(['siswa', 'mataPelajaran', 'kelas'])
+            ->latest('id')
+            ->limit(5)
+            ->get();
     }
 
     private function siswaData(array &$data, $user): void
     {
         $siswa = Siswa::with('kelas')->where('user_id', $user->id)->first();
-        $hariIni = $this->indonesianDay(now()->dayOfWeekIso);
+        $hariIni = $this->indonesianDay(now('Asia/Jakarta')->dayOfWeekIso);
         $jadwalHariIni = Jadwal::with(['guru', 'mataPelajaran'])
             ->where('kelas_id', $siswa?->kelas_id)
             ->where('hari', $hariIni)
@@ -183,14 +234,20 @@ class DashboardController extends Controller
             ->orderBy('jam_mulai')
             ->get();
         $absensiThisMonth = Absensi::where('siswa_id', $siswa?->id)
-            ->whereMonth('tanggal_absen', now()->month)
+            ->whereMonth('tanggal_absen', now('Asia/Jakarta')->month)
             ->count();
         $totalHadir = Absensi::where('siswa_id', $siswa?->id)
             ->where('status_kehadiran', 'hadir')
-            ->whereMonth('tanggal_absen', now()->month)
+            ->whereMonth('tanggal_absen', now('Asia/Jakarta')->month)
             ->count();
         $kehadiran = $absensiThisMonth > 0 ? round(($totalHadir / $absensiThisMonth) * 100, 1) : 0;
-        $tahunAjaranMap = TahunAjaran::pluck('nama_tahun_ajaran', 'id');
+        $tahunAjaranMap = TahunAjaran::get()
+            ->mapWithKeys(fn (TahunAjaran $tahunAjaran) => [
+                $tahunAjaran->id => [
+                    'label' => $tahunAjaran->nama_tahun_ajaran,
+                    'caption' => $tahunAjaran->semester,
+                ],
+            ]);
         $nilaiAkhir = NilaiAkhir::with(['kelas', 'mataPelajaran'])
             ->where('siswa_id', $siswa?->id)
             ->get();
@@ -198,14 +255,15 @@ class DashboardController extends Controller
             ->groupBy(fn (NilaiAkhir $nilai) => $nilai->kelas_id.'|'.$nilai->tahun_ajaran_id.'|'.$nilai->semester)
             ->map(function ($records, string $key) use ($tahunAjaranMap) {
                 $nilai = $records->first();
+                $tahunAjaran = $tahunAjaranMap->get($nilai->tahun_ajaran_id, ['label' => '-', 'caption' => '-']);
 
                 return [
                     'key' => $key,
                     'kelas_id' => $nilai->kelas_id,
                     'tahun_ajaran_id' => $nilai->tahun_ajaran_id,
                     'semester' => $nilai->semester,
-                    'label' => trim(($nilai->kelas?->nama_kelas ?? 'Kelas').' Semester '.$nilai->semester),
-                    'caption' => $tahunAjaranMap->get($nilai->tahun_ajaran_id, '-'),
+                    'label' => trim(($nilai->kelas?->nama_kelas ?? 'Kelas').' Semester '.($tahunAjaran['caption'] ?? $nilai->semester)),
+                    'caption' => trim(($tahunAjaran['label'] ?? '-').' - '.($tahunAjaran['caption'] ?? '-')),
                     'average' => round((float) $records->avg('nilai_akhir'), 2),
                     'total' => $records->count(),
                 ];
@@ -221,7 +279,7 @@ class DashboardController extends Controller
             ])
             ->values();
         $absensiSummary = Absensi::where('siswa_id', $siswa?->id)
-            ->whereMonth('tanggal_absen', now()->month)
+            ->whereMonth('tanggal_absen', now('Asia/Jakarta')->month)
             ->get()
             ->countBy('status_kehadiran');
 

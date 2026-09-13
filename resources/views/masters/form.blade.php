@@ -19,13 +19,41 @@
         </div>
     </section>
 
-    <form method="POST" action="{{ $mode === 'create' ? route('masters.store', $type) : route('masters.update', [$type, $record->id]) }}" class="space-y-6">
+    <form
+        method="POST"
+        action="{{ $mode === 'create' ? route('masters.store', $type) : route('masters.update', [$type, $record->id]) }}"
+        class="space-y-6"
+        @if ($type === 'jadwal')
+            data-jadwal-form
+            data-jadwal-mapel-options='@json($guruMapelOptions ?? [])'
+            data-jadwal-fallback-options='@json($options["mata_pelajaran_id"] ?? [])'
+            data-selected-guru-id="{{ old('guru_id', $selectedGuruId ?? data_get($record, 'guru_id')) }}"
+            data-selected-mapel-id="{{ old('mata_pelajaran_id', $selectedMapelId ?? data_get($record, 'mata_pelajaran_id')) }}"
+        @endif
+    >
         @csrf
         @if ($mode === 'edit')
             @method('PUT')
         @endif
 
-        @foreach ($schema['sections'] as $section)
+        @php
+            $first = [];
+            $middle = [];
+            $last = [];
+            foreach ($schema['sections'] as $s) {
+                $title = $s['title'] ?? '';
+                if ($title === 'Data Siswa') {
+                    $first[] = $s;
+                } elseif ($title === 'Akun Login') {
+                    $last[] = $s;
+                } else {
+                    $middle[] = $s;
+                }
+            }
+            $orderedSections = array_merge($first, $middle, $last);
+        @endphp
+
+        @foreach ($orderedSections as $section)
             <section class="rounded-3xl border border-white/10 bg-slate-900/60 p-8 shadow-2xl">
                 <h3 class="text-xl font-semibold">{{ $section['title'] }}</h3>
                 <div class="mt-6 grid gap-5 md:grid-cols-2">
@@ -36,6 +64,8 @@
                             $fieldType = $field['type'] ?? 'text';
                             $fieldOptions = $options[$fieldName] ?? ($field['options'] ?? []);
                             $isRequired = (bool) ($field['required'] ?? false);
+                            $isGuruField = $type === 'jadwal' && $fieldName === 'guru_id';
+                            $isMapelField = $type === 'jadwal' && $fieldName === 'mata_pelajaran_id';
                         @endphp
                         <div class="{{ $fieldType === 'textarea' ? 'md:col-span-2' : '' }}">
                             <label class="mb-2 block text-sm font-medium text-slate-300" for="{{ $fieldName }}">
@@ -56,6 +86,12 @@
                                 <select
                                     id="{{ $fieldName }}"
                                     name="{{ $fieldName }}"
+                                    @if ($isGuruField)
+                                        data-jadwal-guru-select
+                                    @endif
+                                    @if ($isMapelField)
+                                        data-jadwal-mapel-select
+                                    @endif
                                     class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none focus:border-teal-300/50"
                                 >
                                     <option value="">Pilih {{ $field['label'] }}</option>
@@ -77,16 +113,24 @@
                                     {{ $field['hint'] ?? 'Centang jika aktif' }}
                                 </label>
                             @else
-                                <input
-                                    id="{{ $fieldName }}"
-                                    type="{{ $fieldType }}"
-                                    name="{{ $fieldName }}"
-                                    value="{{ $fieldType === 'password' ? '' : $currentValue }}"
-                                    placeholder="{{ $field['hint'] ?? '' }}"
-                                    class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50"
-                                >
-                                @if ($fieldType === 'password' && $mode === 'edit')
-                                    <p class="mt-2 text-xs text-slate-400">Kosongkan jika password tidak diubah.</p>
+                                @if ($fieldType === 'password')
+                                    <x-password-field
+                                        :name="$fieldName"
+                                        :value="''"
+                                        :placeholder="$field['hint'] ?? 'Masukkan password'"
+                                        autocomplete="new-password"
+                                        :show-note="$mode === 'edit'"
+                                        :note="$mode === 'edit' ? 'Kosongkan jika password tidak diubah.' : null"
+                                    />
+                                @else
+                                    <input
+                                        id="{{ $fieldName }}"
+                                        type="{{ $fieldType }}"
+                                        name="{{ $fieldName }}"
+                                        value="{{ $currentValue }}"
+                                        placeholder="{{ $field['hint'] ?? '' }}"
+                                        class="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-teal-300/50"
+                                    >
                                 @endif
                             @endif
 
@@ -112,4 +156,55 @@
         </div>
     </form>
 </div>
+@if ($type === 'jadwal')
+    <script>
+        (function () {
+            const form = document.querySelector('[data-jadwal-form]');
+            if (!form) {
+                return;
+            }
+
+            const guruSelect = form.querySelector('[data-jadwal-guru-select]');
+            const mapelSelect = form.querySelector('[data-jadwal-mapel-select]');
+            const mapelByGuru = JSON.parse(form.dataset.jadwalMapelOptions || '{}');
+            const fallbackOptions = JSON.parse(form.dataset.jadwalFallbackOptions || '{}');
+            const selectedMapelId = String(form.dataset.selectedMapelId || '');
+
+            const populateMapel = () => {
+                const guruId = String(guruSelect?.value || '');
+                const options = mapelByGuru[guruId] || fallbackOptions;
+                const entries = Object.entries(options || {});
+                const currentValue = String(mapelSelect?.value || selectedMapelId || '');
+
+                if (!mapelSelect) {
+                    return;
+                }
+
+                mapelSelect.innerHTML = '';
+
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = entries.length > 0
+                    ? 'Pilih Mata Pelajaran'
+                    : 'Belum ada mapel untuk guru ini';
+                mapelSelect.appendChild(placeholder);
+
+                entries.forEach(([value, label]) => {
+                    const option = document.createElement('option');
+                    option.value = value;
+                    option.textContent = label;
+                    if (String(value) === currentValue) {
+                        option.selected = true;
+                    }
+                    mapelSelect.appendChild(option);
+                });
+
+                mapelSelect.disabled = entries.length === 0;
+            };
+
+            guruSelect?.addEventListener('change', populateMapel);
+            populateMapel();
+        })();
+    </script>
+@endif
 @endsection

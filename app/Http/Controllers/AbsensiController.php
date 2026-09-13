@@ -10,10 +10,13 @@ use App\Models\Notifikasi;
 use App\Models\Siswa;
 use App\Models\TahunAjaran;
 use App\Support\ActivityLogger;
+use App\Support\IndonesianDateTime;
+use App\Support\NilaiAkhirCalculator;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AbsensiController extends Controller
@@ -22,10 +25,11 @@ class AbsensiController extends Controller
     {
         $kelasId = $request->integer('kelas_id');
         $jadwalId = $request->integer('jadwal_id');
-        $tanggal = $request->input('tanggal', now()->toDateString());
+        $tanggal = $request->input('tanggal', now('Asia/Jakarta')->toDateString());
         $tahunAjaran = TahunAjaran::where('status_aktif', true)->first() ?? TahunAjaran::orderByDesc('id')->first();
         $kelasList = Kelas::orderBy('nama_kelas')->get();
         $hariIni = $this->indonesianDay(Carbon::parse($tanggal)->dayOfWeekIso);
+        $guru = $this->currentGuru($request);
 
         $selectedKelas = $kelasId ? Kelas::find($kelasId) : $kelasList->first();
         $students = collect();
@@ -39,12 +43,17 @@ class AbsensiController extends Controller
                 ->orderBy('nama_siswa')
                 ->get();
 
-            $jadwalAktif = Jadwal::with(['guru', 'mataPelajaran'])
+            $jadwalQuery = Jadwal::with(['guru', 'mataPelajaran'])
                 ->where('kelas_id', $selectedKelas->id)
                 ->where('hari', $hariIni)
                 ->where('status_aktif', true)
-                ->orderBy('jam_mulai')
-                ->get();
+                ->orderBy('jam_mulai');
+
+            if ($guru) {
+                $jadwalQuery->where('guru_id', $guru->id);
+            }
+
+            $jadwalAktif = $jadwalQuery->get();
 
             $selectedJadwal = $jadwalId
                 ? $jadwalAktif->firstWhere('id', $jadwalId)
@@ -90,30 +99,54 @@ class AbsensiController extends Controller
         $siswaIds = Siswa::where('kelas_id', $kelas->id)->pluck('id')->all();
         $hari = $this->indonesianDay(Carbon::parse($data['tanggal'])->dayOfWeekIso);
         $jadwalAktif = null;
+        $guru = $this->currentGuru($request);
 
         if (! empty($data['jadwal_id'])) {
             $jadwalAktif = Jadwal::where('id', $data['jadwal_id'])
                 ->where('kelas_id', $kelas->id)
                 ->where('status_aktif', true)
+                ->when($guru, fn ($query) => $query->where('guru_id', $guru->id))
                 ->first();
+
+            if (! $jadwalAktif) {
+                throw ValidationException::withMessages([
+                    'jadwal_id' => 'Jadwal yang dipilih tidak valid untuk kelas ini atau bukan jadwal pengampu Anda.',
+                ]);
+            }
         }
 
         if (! $jadwalAktif) {
             $jadwalAktif = Jadwal::where('kelas_id', $kelas->id)
                 ->where('hari', $hari)
                 ->where('status_aktif', true)
+                ->when($guru, fn ($query) => $query->where('guru_id', $guru->id))
                 ->orderBy('jam_mulai')
                 ->first();
         }
-        $guru = $jadwalAktif?->guru ?? Guru::where('user_id', $request->user()->id)->first();
+        $guru = $jadwalAktif?->guru ?? $guru ?? Guru::where('user_id', $request->user()->id)->first();
+
+        if (! $jadwalAktif) {
+            throw ValidationException::withMessages([
+                'jadwal_id' => 'Jadwal aktif untuk kelas dan guru ini belum ditemukan.',
+            ]);
+        }
 
         $siswaList = Siswa::with('user')
             ->where('kelas_id', $kelas->id)
             ->get();
 
+        $absensiInput = $data['absensi'] ?? [];
+        foreach ($siswaIds as $siswaId) {
+            if (! isset($absensiInput[$siswaId]['status'])) {
+                throw ValidationException::withMessages([
+                    'absensi' => 'Status absensi untuk semua siswa harus diisi sebelum menyimpan.',
+                ]);
+            }
+        }
+
         DB::transaction(function () use ($data, $guru, $tahunAjaran, $kelas, $siswaIds, $jadwalAktif, $siswaList): void {
             foreach ($siswaIds as $siswaId) {
-                $row = $data['absensi'][$siswaId] ?? ['status' => 'hadir', 'keterangan' => null];
+                $row = $data['absensi'][$siswaId];
 
                 Absensi::updateOrCreate(
                     [
@@ -132,7 +165,7 @@ class AbsensiController extends Controller
                 );
             }
 
-            $judul = 'Absensi kelas '.$kelas->nama_kelas.' pada '.Carbon::parse($data['tanggal'])->format('d M Y');
+            $judul = 'Absensi kelas '.$kelas->nama_kelas.' pada '.IndonesianDateTime::date($data['tanggal']);
             foreach ($siswaList as $siswa) {
                 $status = $data['absensi'][$siswa->id]['status'] ?? 'hadir';
                 $pesan = 'Absensi Anda untuk kelas '.$kelas->nama_kelas.' sudah diinput dengan status '.strtoupper($status).'.';
@@ -141,7 +174,7 @@ class AbsensiController extends Controller
                     [
                         'user_id' => $siswa->user_id,
                         'judul' => $judul,
-                        'link' => route('siswa.portal'),
+                        'link' => route('dashboard'),
                     ],
                     [
                         'pesan' => $pesan,
@@ -153,11 +186,19 @@ class AbsensiController extends Controller
             }
         });
 
+        if ($jadwalAktif && $tahunAjaran) {
+            app(NilaiAkhirCalculator::class)->recalculateForClassMapel(
+                $kelas->id,
+                $jadwalAktif->mata_pelajaran_id,
+                $tahunAjaran->id
+            );
+        }
+
         ActivityLogger::record(
             $request->user(),
             'absensi',
             'Input absensi kelas '.$kelas->nama_kelas,
-            'Tanggal '.Carbon::parse($data['tanggal'])->format('d M Y').' untuk '.count($siswaIds).' siswa.',
+            'Tanggal '.IndonesianDateTime::date($data['tanggal']).' untuk '.count($siswaIds).' siswa.',
             route('absensi.index', ['kelas_id' => $kelas->id, 'tanggal' => $data['tanggal']])
         );
 
@@ -177,5 +218,14 @@ class AbsensiController extends Controller
             6 => 'Sabtu',
             7 => 'Minggu',
         };
+    }
+
+    private function currentGuru(Request $request): ?Guru
+    {
+        if ($request->user()?->role !== 'guru') {
+            return null;
+        }
+
+        return Guru::where('user_id', $request->user()->id)->first();
     }
 }
